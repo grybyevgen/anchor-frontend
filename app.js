@@ -1,11 +1,14 @@
 // Конфигурация API
 const API_URL = 'https://anchor-game-production.up.railway.app/api';
+// Для локальной разработки: const API_URL = 'http://localhost:3000/api';
 
 // Состояние приложения
 let currentUser = null;
 let ships = [];
 let ports = [];
 let marketCargo = [];
+let isLoading = false;
+let autoRefreshInterval = null;
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', () => {
@@ -35,21 +38,105 @@ async function initApp() {
     
     // Обновляем UI
     updateUI();
+    
+    // Запускаем автообновление данных каждые 30 секунд
+    startAutoRefresh();
+}
+
+// Автообновление данных
+function startAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+    
+    autoRefreshInterval = setInterval(async () => {
+        try {
+            await checkCompletedTravels();
+            await loadUserData();
+            await loadMarket();
+            updateUI();
+        } catch (error) {
+            console.error('Ошибка автообновления:', error);
+        }
+    }, 30000); // 30 секунд
+}
+
+function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+    }
+}
+
+// Универсальная функция для обработки API запросов
+async function apiRequest(url, options = {}) {
+    try {
+        setLoading(true);
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+
+        if (!data.success && data.error) {
+            throw new Error(data.error);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('API Error:', error);
+        showError(error.message || 'Ошибка соединения с сервером');
+        throw error;
+    } finally {
+        setLoading(false);
+    }
+}
+
+// Показать/скрыть индикатор загрузки
+function setLoading(loading) {
+    isLoading = loading;
+    const loadingIndicator = document.getElementById('loading-indicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = loading ? 'block' : 'none';
+    }
+}
+
+// Показать ошибку
+function showError(message) {
+    // Можно использовать Telegram Web App API для показа уведомлений
+    if (window.TelegramWebApp && window.TelegramWebApp.showAlert) {
+        window.TelegramWebApp.showAlert(message);
+    } else {
+        alert(message);
+    }
+}
+
+// Показать успешное сообщение
+function showSuccess(message) {
+    if (window.TelegramWebApp && window.TelegramWebApp.showAlert) {
+        window.TelegramWebApp.showAlert(message);
+    } else {
+        alert(message);
+    }
 }
 
 async function initUser() {
     try {
-        const response = await fetch(`${API_URL}/users/init`, {
+        const data = await apiRequest(`${API_URL}/users/init`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
             body: JSON.stringify({
                 telegramId: currentUser.id,
                 username: currentUser.username
             })
         });
-        const data = await response.json();
         currentUser.coins = data.coins || 0;
     } catch (error) {
         console.error('Ошибка инициализации пользователя:', error);
@@ -58,10 +145,14 @@ async function initUser() {
 
 async function loadUserData() {
     try {
-        const response = await fetch(`${API_URL}/users/${currentUser.id}`);
-        const data = await response.json();
-        currentUser.coins = data.coins;
-        ships = data.ships || [];
+        // Сначала проверяем завершенные путешествия
+        await checkCompletedTravels();
+        
+        const data = await apiRequest(`${API_URL}/users/${currentUser.id}`);
+        if (data.success) {
+            currentUser.coins = data.coins;
+            ships = data.ships || [];
+        }
     } catch (error) {
         console.error('Ошибка загрузки данных:', error);
     }
@@ -69,8 +160,10 @@ async function loadUserData() {
 
 async function loadPorts() {
     try {
-        const response = await fetch(`${API_URL}/ports`);
-        ports = await response.json();
+        const data = await apiRequest(`${API_URL}/ports`);
+        if (data.success) {
+            ports = data.ports || [];
+        }
     } catch (error) {
         console.error('Ошибка загрузки портов:', error);
     }
@@ -78,10 +171,34 @@ async function loadPorts() {
 
 async function loadMarket() {
     try {
-        const response = await fetch(`${API_URL}/market`);
-        marketCargo = await response.json();
+        const data = await apiRequest(`${API_URL}/market`);
+        if (data.success) {
+            marketCargo = data.cargo || [];
+        }
     } catch (error) {
         console.error('Ошибка загрузки рынка:', error);
+    }
+}
+
+// Проверить завершенные путешествия
+async function checkCompletedTravels() {
+    try {
+        await apiRequest(`${API_URL}/ships/check-travels`, {
+            method: 'POST'
+        });
+    } catch (error) {
+        // Игнорируем ошибки проверки
+        console.error('Ошибка проверки путешествий:', error);
+    }
+}
+
+// Проверить конкретное судно
+async function checkShipTravelStatus(shipId) {
+    try {
+        const data = await apiRequest(`${API_URL}/ships/${shipId}/check-travel`);
+        return data.completed || false;
+    } catch (error) {
+        return false;
     }
 }
 
@@ -141,7 +258,7 @@ function renderShips() {
     }
 
     shipsList.innerHTML = ships.map(ship => `
-        <div class="ship-card" onclick="openShipModal(${ship.id})">
+        <div class="ship-card" onclick="openShipModal('${ship.id}')">
             <h3>${ship.name}</h3>
             <div class="ship-info">
                 <div class="stat">
@@ -173,7 +290,7 @@ function renderShips() {
 function renderPorts() {
     const portsList = document.getElementById('ports-list');
     portsList.innerHTML = ports.map(port => `
-        <div class="port-card" onclick="openPortModal(${port.id})">
+        <div class="port-card" onclick="openPortModal('${port.id}')">
             <h3>${port.name}</h3>
             <div class="port-info">
                 <div class="stat">
@@ -209,7 +326,7 @@ function renderMarket() {
                     <span>Порт:</span>
                     <span>${getPortName(cargo.portId)}</span>
                 </div>
-                <button class="btn-primary" onclick="buyCargo(${cargo.id})">Купить</button>
+                <button class="btn-primary" onclick="buyCargo('${cargo.id}')">Купить</button>
             </div>
         </div>
     `).join('');
@@ -219,6 +336,17 @@ async function openShipModal(shipId) {
     const ship = ships.find(s => s.id === shipId);
     if (!ship) return;
 
+    // Проверяем статус путешествия перед открытием модального окна
+    const travelCompleted = await checkShipTravelStatus(shipId);
+    if (travelCompleted) {
+        // Обновляем данные если путешествие завершено
+        await loadUserData();
+        const updatedShip = ships.find(s => s.id === shipId);
+        if (updatedShip) {
+            showSuccess('Судно прибыло в порт!');
+        }
+    }
+
     const modal = document.getElementById('ship-modal');
     const title = document.getElementById('modal-title');
     const body = document.getElementById('modal-body');
@@ -226,7 +354,26 @@ async function openShipModal(shipId) {
     title.textContent = ship.name;
     
     if (ship.isTraveling) {
-        body.innerHTML = '<div class="loading">Судно в пути. Подождите...</div>';
+        const endTime = ship.travelEndTime ? new Date(ship.travelEndTime) : null;
+        const now = new Date();
+        const remaining = endTime && endTime > now ? Math.ceil((endTime - now) / 1000) : 0;
+        
+        body.innerHTML = `
+            <div class="loading">
+                <p>⏳ Судно в пути...</p>
+                ${remaining > 0 ? `<p>Прибытие через: ${remaining} сек</p>` : '<p>Проверяем статус...</p>'}
+            </div>
+        `;
+        
+        // Автоматически обновляем статус каждые 5 секунд
+        const statusInterval = setInterval(async () => {
+            const completed = await checkShipTravelStatus(shipId);
+            if (completed) {
+                clearInterval(statusInterval);
+                await loadUserData();
+                openShipModal(shipId); // Переоткрываем модальное окно с обновленными данными
+            }
+        }, 5000);
     } else {
         body.innerHTML = `
             <div class="ship-info">
@@ -240,14 +387,14 @@ async function openShipModal(shipId) {
             ${ship.cargo ? `
                 <div style="margin: 15px 0;">
                     <h4>Текущий груз: ${getCargoName(ship.cargo.type)} (${ship.cargo.amount})</h4>
-                    <button class="btn-primary" onclick="unloadCargo(${ship.id})">Выгрузить груз</button>
+                    <button class="btn-primary" onclick="unloadCargo('${ship.id}')">Выгрузить груз</button>
                 </div>
             ` : `
                 <div style="margin: 15px 0;">
                     <h4>Загрузить груз:</h4>
                     <div class="cargo-selector">
                         ${getAvailableCargoForPort(ship.currentPortId).map(cargo => `
-                            <div class="cargo-option" onclick="selectCargo(${ship.id}, '${cargo.type}', ${cargo.amount})">
+                            <div class="cargo-option" onclick="selectCargo('${ship.id}', '${cargo.type}', ${cargo.amount})">
                                 ${getCargoName(cargo.type)} (${cargo.amount}) - 💰 ${cargo.price || 'Бесплатно'}
                             </div>
                         `).join('')}
@@ -259,7 +406,7 @@ async function openShipModal(shipId) {
                 <h4>Отправить в порт:</h4>
                 <div class="port-selector">
                     ${ports.filter(p => p.id !== ship.currentPortId).map(port => `
-                        <div class="port-option" onclick="sendShipToPort(${ship.id}, ${port.id})">
+                        <div class="port-option" onclick="sendShipToPort('${ship.id}', '${port.id}')">
                             ${port.name} (💰 ${calculateTravelCost(ship, port)})
                         </div>
                     `).join('')}
@@ -267,7 +414,7 @@ async function openShipModal(shipId) {
             </div>
             
             ${ship.health < ship.maxHealth ? `
-                <button class="btn-secondary" onclick="repairShip(${ship.id})">Починить судно</button>
+                <button class="btn-secondary" onclick="repairShip('${ship.id}')">Починить судно</button>
             ` : ''}
         `;
     }
@@ -307,123 +454,95 @@ async function sendShipToPort(shipId, portId) {
     const cost = calculateTravelCost(ship, port);
     
     if (ship.fuel < cost) {
-        alert('Недостаточно топлива!');
+        showError('Недостаточно топлива!');
         return;
     }
     
     try {
-        const response = await fetch(`${API_URL}/ships/${shipId}/travel`, {
+        const data = await apiRequest(`${API_URL}/ships/${shipId}/travel`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ portId })
         });
         
-        const data = await response.json();
-        
         if (data.success) {
-            alert(`Судно отправлено в ${port.name}!`);
+            showSuccess(`Судно отправлено в ${port.name}!`);
             await loadUserData();
             updateUI();
             document.getElementById('ship-modal').style.display = 'none';
-        } else {
-            alert(data.error || 'Ошибка отправки судна');
         }
     } catch (error) {
-        console.error('Ошибка:', error);
-        alert('Ошибка отправки судна');
+        // Ошибка уже обработана в apiRequest
     }
 }
 
 async function selectCargo(shipId, cargoType, amount) {
     try {
-        const response = await fetch(`${API_URL}/ships/${shipId}/load`, {
+        const data = await apiRequest(`${API_URL}/ships/${shipId}/load`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cargoType, amount })
         });
         
-        const data = await response.json();
-        
         if (data.success) {
-            alert('Груз загружен!');
+            showSuccess('Груз загружен!');
             await loadUserData();
             updateUI();
             openShipModal(shipId);
-        } else {
-            alert(data.error || 'Ошибка загрузки груза');
         }
     } catch (error) {
-        console.error('Ошибка:', error);
-        alert('Ошибка загрузки груза');
+        // Ошибка уже обработана в apiRequest
     }
 }
 
 async function unloadCargo(shipId) {
     try {
-        const response = await fetch(`${API_URL}/ships/${shipId}/unload`, {
+        const data = await apiRequest(`${API_URL}/ships/${shipId}/unload`, {
             method: 'POST'
         });
         
-        const data = await response.json();
-        
         if (data.success) {
-            alert(`Груз выгружен! Получено: 💰 ${data.reward}`);
+            showSuccess(`Груз выгружен! Получено: 💰 ${data.reward}`);
             await loadUserData();
             await loadMarket();
             updateUI();
             openShipModal(shipId);
-        } else {
-            alert(data.error || 'Ошибка выгрузки груза');
         }
     } catch (error) {
-        console.error('Ошибка:', error);
-        alert('Ошибка выгрузки груза');
+        // Ошибка уже обработана в apiRequest
     }
 }
 
 async function repairShip(shipId) {
     try {
-        const response = await fetch(`${API_URL}/ships/${shipId}/repair`, {
+        const data = await apiRequest(`${API_URL}/ships/${shipId}/repair`, {
             method: 'POST'
         });
         
-        const data = await response.json();
-        
         if (data.success) {
-            alert('Судно отремонтировано!');
+            showSuccess(`Судно отремонтировано! Стоимость: 💰 ${data.cost}`);
             await loadUserData();
             updateUI();
             openShipModal(shipId);
-        } else {
-            alert(data.error || 'Ошибка ремонта');
         }
     } catch (error) {
-        console.error('Ошибка:', error);
-        alert('Ошибка ремонта');
+        // Ошибка уже обработана в apiRequest
     }
 }
 
 async function buyCargo(cargoId) {
     try {
-        const response = await fetch(`${API_URL}/market/${cargoId}/buy`, {
+        const data = await apiRequest(`${API_URL}/market/${cargoId}/buy`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: currentUser.id })
         });
         
-        const data = await response.json();
-        
         if (data.success) {
-            alert('Груз куплен!');
+            showSuccess('Груз куплен!');
             await loadUserData();
             await loadMarket();
             updateUI();
-        } else {
-            alert(data.error || 'Ошибка покупки');
         }
     } catch (error) {
-        console.error('Ошибка:', error);
-        alert('Ошибка покупки');
+        // Ошибка уже обработана в apiRequest
     }
 }
 
@@ -456,25 +575,19 @@ function showBuyShipModal() {
 
 async function purchaseShip(shipType) {
     try {
-        const response = await fetch(`${API_URL}/ships/buy`, {
+        const data = await apiRequest(`${API_URL}/ships/buy`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: currentUser.id, type: shipType })
         });
         
-        const data = await response.json();
-        
         if (data.success) {
-            alert('Судно куплено!');
+            showSuccess('Судно куплено!');
             await loadUserData();
             updateUI();
             document.getElementById('ship-modal').style.display = 'none';
-        } else {
-            alert(data.error || 'Ошибка покупки судна');
         }
     } catch (error) {
-        console.error('Ошибка:', error);
-        alert('Ошибка покупки судна');
+        // Ошибка уже обработана в apiRequest
     }
 }
 
