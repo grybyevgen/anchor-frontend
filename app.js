@@ -333,7 +333,10 @@ function renderMarket() {
         return;
     }
 
-    marketList.innerHTML = marketCargo.map(cargo => `
+    marketList.innerHTML = marketCargo.map(cargo => {
+        const pricePerUnit = Math.floor(cargo.price / cargo.amount);
+        const maxAvailable = Math.min(cargo.amount, 100); // Максимум 100 единиц или доступное количество
+        return `
         <div class="market-item">
             <h3>${getCargoName(cargo.type)}</h3>
             <div class="port-info">
@@ -342,17 +345,34 @@ function renderMarket() {
                     <span>${cargo.amount}</span>
                 </div>
                 <div class="stat">
-                    <span>Цена:</span>
-                    <span>💰 ${cargo.price}</span>
+                    <span>Цена за единицу:</span>
+                    <span>💰 ${pricePerUnit}</span>
                 </div>
                 <div class="stat">
                     <span>Порт:</span>
                     <span>${getPortName(cargo.portId)}</span>
                 </div>
-                <button class="btn-primary" onclick="buyCargo('${cargo.id}')">Купить</button>
+                <div style="display: flex; gap: 10px; margin-top: 10px; align-items: center;">
+                    <input type="number" 
+                           id="market-cargo-amount-${cargo.id}" 
+                           min="1" 
+                           max="${maxAvailable}" 
+                           value="${maxAvailable > 0 ? 1 : 0}" 
+                           style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;"
+                           ${maxAvailable === 0 ? 'disabled' : ''}
+                           onchange="updateMarketPrice('${cargo.id}', ${pricePerUnit})">
+                    <span>шт. (макс. ${maxAvailable})</span>
+                    <span id="market-price-${cargo.id}" style="font-weight: bold;">💰 ${pricePerUnit}</span>
+                    <button class="btn-primary" 
+                            onclick="confirmBuyCargo('${cargo.id}', ${cargo.amount}, ${pricePerUnit})"
+                            ${maxAvailable === 0 ? 'disabled' : ''}>
+                        Купить
+                    </button>
+                </div>
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 async function openShipModal(shipId) {
@@ -416,11 +436,29 @@ async function openShipModal(shipId) {
                 <div style="margin: 15px 0;">
                     <h4>Загрузить груз:</h4>
                     <div class="cargo-selector">
-                        ${getAvailableCargoForPort(ship.currentPortId).map(cargo => `
-                            <div class="cargo-option" onclick="selectCargo('${ship.id}', '${cargo.type}', ${cargo.amount})">
-                                ${getCargoName(cargo.type)} (${cargo.amount}) - 💰 ${cargo.price || 'Бесплатно'}
-                            </div>
-                        `).join('')}
+                        ${getAvailableCargoForPort(ship.currentPortId).map(cargo => {
+                            const maxAvailable = Math.min(cargo.amount, 100); // Максимум 100 единиц или доступное количество
+                            return `
+                                <div class="cargo-option" style="margin-bottom: 10px;">
+                                    <div><strong>${getCargoName(cargo.type)}</strong> - Доступно: ${cargo.amount} - 💰 ${cargo.price || 'Бесплатно'}/ед.</div>
+                                    <div style="display: flex; gap: 10px; margin-top: 5px; align-items: center;">
+                                        <input type="number" 
+                                               id="cargo-amount-${cargo.type}-${ship.id}" 
+                                               min="1" 
+                                               max="${maxAvailable}" 
+                                               value="${maxAvailable > 0 ? 1 : 0}" 
+                                               style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;"
+                                               ${maxAvailable === 0 ? 'disabled' : ''}>
+                                        <span>шт. (макс. ${maxAvailable})</span>
+                                        <button class="btn-primary" 
+                                                onclick="confirmLoadCargo('${ship.id}', '${cargo.type}', ${cargo.amount}, ${cargo.price || 0})"
+                                                ${maxAvailable === 0 ? 'disabled' : ''}>
+                                            Загрузить
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
             `}
@@ -498,6 +536,36 @@ async function sendShipToPort(shipId, portId) {
     }
 }
 
+// Функция подтверждения загрузки груза с выбором количества
+async function confirmLoadCargo(shipId, cargoType, maxAvailable, pricePerUnit) {
+    const inputId = `cargo-amount-${cargoType}-${shipId}`;
+    const amountInput = document.getElementById(inputId);
+    
+    if (!amountInput) {
+        showError('Ошибка: поле ввода количества не найдено');
+        return;
+    }
+    
+    const amount = parseInt(amountInput.value);
+    
+    if (!amount || amount <= 0) {
+        showError('Количество должно быть больше 0');
+        return;
+    }
+    
+    if (amount > 100) {
+        showError('Максимальное количество груза - 100 единиц');
+        return;
+    }
+    
+    if (amount > maxAvailable) {
+        showError(`Недостаточно груза в порту. Доступно: ${maxAvailable}`);
+        return;
+    }
+    
+    await selectCargo(shipId, cargoType, amount);
+}
+
 async function selectCargo(shipId, cargoType, amount) {
     try {
         const data = await apiRequest(`${API_URL}/ships/${shipId}/load`, {
@@ -551,18 +619,62 @@ async function repairShip(shipId) {
     }
 }
 
-async function buyCargo(cargoId) {
+// Функция подтверждения покупки груза с рынка с выбором количества
+async function confirmBuyCargo(cargoId, maxAvailable, pricePerUnit) {
+    const inputId = `market-cargo-amount-${cargoId}`;
+    const amountInput = document.getElementById(inputId);
+    
+    if (!amountInput) {
+        showError('Ошибка: поле ввода количества не найдено');
+        return;
+    }
+    
+    const amount = parseInt(amountInput.value);
+    
+    if (!amount || amount <= 0) {
+        showError('Количество должно быть больше 0');
+        return;
+    }
+    
+    if (amount > 100) {
+        showError('Максимальное количество груза - 100 единиц');
+        return;
+    }
+    
+    if (amount > maxAvailable) {
+        showError(`Недостаточно груза на рынке. Доступно: ${maxAvailable}`);
+        return;
+    }
+    
+    await buyCargo(cargoId, amount);
+}
+
+// Функция обновления отображаемой цены при изменении количества
+function updateMarketPrice(cargoId, pricePerUnit) {
+    const inputId = `market-cargo-amount-${cargoId}`;
+    const priceId = `market-price-${cargoId}`;
+    const amountInput = document.getElementById(inputId);
+    const priceElement = document.getElementById(priceId);
+    
+    if (amountInput && priceElement) {
+        const amount = parseInt(amountInput.value) || 0;
+        const totalPrice = pricePerUnit * amount;
+        priceElement.textContent = `💰 ${totalPrice}`;
+    }
+}
+
+async function buyCargo(cargoId, amount) {
     try {
         // Используем userId (UUID) если он есть, иначе используем telegramId
         const userId = currentUser.userId || currentUser.id;
         
         const data = await apiRequest(`${API_URL}/market/${cargoId}/buy`, {
             method: 'POST',
-            body: JSON.stringify({ userId: userId })
+            body: JSON.stringify({ userId: userId, amount: amount })
         });
         
         if (data.success) {
-            showSuccess('Груз куплен!');
+            showSuccess(`Груз куплен! Загружено: ${data.boughtAmount || amount} единиц`);
             await loadUserData();
             await loadMarket();
             updateUI();
@@ -659,7 +771,10 @@ window.openShipModal = openShipModal;
 window.openPortModal = openPortModal;
 window.sendShipToPort = sendShipToPort;
 window.selectCargo = selectCargo;
+window.confirmLoadCargo = confirmLoadCargo;
 window.unloadCargo = unloadCargo;
 window.repairShip = repairShip;
 window.buyCargo = buyCargo;
+window.confirmBuyCargo = confirmBuyCargo;
+window.updateMarketPrice = updateMarketPrice;
 window.purchaseShip = purchaseShip;
