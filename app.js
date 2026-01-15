@@ -39,7 +39,7 @@ async function initApp() {
     // Обновляем UI
     updateUI();
     
-    // Запускаем автообновление данных каждые 30 секунд
+    // Запускаем автообновление данных каждые 60 секунд
     startAutoRefresh();
 }
 
@@ -52,14 +52,16 @@ function startAutoRefresh() {
     autoRefreshInterval = setInterval(async () => {
         try {
             // Фоновое обновление без показа индикатора загрузки
+            // Обновляем только критичные данные: проверка путешествий и данные пользователя
             await checkCompletedTravels(false);
             await loadUserData(false);
-            await loadMarket(false);
+            // Рынок обновляем только при ручном обновлении или переключении вкладки для экономии запросов
+            // await loadMarket(false); // убрано из автообновления
             updateUI();
         } catch (error) {
             console.error('Ошибка автообновления:', error);
         }
-    }, 30000); // 30 секунд
+    }, 60000); // 60 секунд (увеличено с 30 для снижения нагрузки)
 }
 
 function stopAutoRefresh() {
@@ -235,7 +237,7 @@ function setupEventListeners() {
     document.getElementById('buy-ship-btn').addEventListener('click', showBuyShipModal);
 }
 
-function switchTab(tabName) {
+async function switchTab(tabName) {
     // Убираем активный класс со всех вкладок
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -243,6 +245,16 @@ function switchTab(tabName) {
     // Активируем выбранную вкладку
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
     document.getElementById(`${tabName}-tab`).classList.add('active');
+    
+    // Обновляем данные рынка при переключении на вкладку "Рынок"
+    if (tabName === 'market') {
+        try {
+            await loadMarket(false); // Загружаем без индикатора загрузки
+            renderMarket();
+        } catch (error) {
+            console.error('Ошибка загрузки рынка:', error);
+        }
+    }
 }
 
 function updateUI() {
