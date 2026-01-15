@@ -9,6 +9,8 @@ let ports = [];
 let marketCargo = [];
 let isLoading = false;
 let autoRefreshInterval = null;
+let marketFilterPort = 'all'; // Фильтр порта: 'all' или ID порта
+let marketGroupByPort = false; // Группировать ли грузы по портам
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', () => {
@@ -328,14 +330,80 @@ function renderPorts() {
 function renderMarket() {
     const marketList = document.getElementById('market-list');
     
-    if (marketCargo.length === 0) {
-        marketList.innerHTML = '<div class="loading">На рынке пока нет грузов</div>';
+    // Фильтруем грузы по выбранному порту
+    let filteredCargo = marketCargo;
+    if (marketFilterPort !== 'all') {
+        filteredCargo = marketCargo.filter(cargo => cargo.portId === marketFilterPort);
+    }
+    
+    // Сортируем/группируем грузы
+    let sortedCargo = [...filteredCargo];
+    if (marketGroupByPort) {
+        // Группируем по портам, сортируем по названию порта
+        sortedCargo.sort((a, b) => {
+            const portA = getPortName(a.portId);
+            const portB = getPortName(b.portId);
+            if (portA !== portB) {
+                return portA.localeCompare(portB, 'ru');
+            }
+            // Если порты одинаковые, сортируем по типу груза
+            return getCargoName(a.type).localeCompare(getCargoName(b.type), 'ru');
+        });
+    } else {
+        // Обычная сортировка по типу груза
+        sortedCargo.sort((a, b) => {
+            return getCargoName(a.type).localeCompare(getCargoName(b.type), 'ru');
+        });
+    }
+    
+    if (filteredCargo.length === 0) {
+        const noCargoMessage = marketFilterPort !== 'all' 
+            ? `<div class="loading">В выбранном порту нет грузов на рынке</div>`
+            : '<div class="loading">На рынке пока нет грузов</div>';
+        marketList.innerHTML = `
+            <div class="market-filters" style="margin-bottom: 15px;">
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight: bold;">Фильтр по порту:</label>
+                    <select id="market-port-filter" 
+                            onchange="setMarketFilterPort(this.value)"
+                            style="padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 150px;">
+                        <option value="all">Все порты</option>
+                        ${ports.map(port => `
+                            <option value="${port.id}" ${marketFilterPort === port.id ? 'selected' : ''}>
+                                ${port.name}
+                            </option>
+                        `).join('')}
+                    </select>
+                    <label style="margin-left: 10px; font-weight: bold;">
+                        <input type="checkbox" 
+                               id="market-group-by-port"
+                               ${marketGroupByPort ? 'checked' : ''}
+                               onchange="setMarketGroupByPort(this.checked)"
+                               style="margin-right: 5px;">
+                        Группировать по портам
+                    </label>
+                </div>
+            </div>
+            ${noCargoMessage}
+        `;
         return;
     }
 
-    marketList.innerHTML = marketCargo.map(cargo => {
+    // Группируем грузы по портам если включена группировка
+    let groupedCargo = {};
+    if (marketGroupByPort) {
+        sortedCargo.forEach(cargo => {
+            const portId = cargo.portId;
+            if (!groupedCargo[portId]) {
+                groupedCargo[portId] = [];
+            }
+            groupedCargo[portId].push(cargo);
+        });
+    }
+
+    const renderCargoItem = (cargo) => {
         const pricePerUnit = Math.floor(cargo.price / cargo.amount);
-        const maxAvailable = Math.min(cargo.amount, 100); // Максимум 100 единиц или доступное количество
+        const maxAvailable = Math.min(cargo.amount, 100);
         return `
         <div class="market-item">
             <h3>${getCargoName(cargo.type)}</h3>
@@ -348,10 +416,12 @@ function renderMarket() {
                     <span>Цена за единицу:</span>
                     <span>💰 ${pricePerUnit}</span>
                 </div>
+                ${!marketGroupByPort || marketFilterPort !== 'all' ? `
                 <div class="stat">
                     <span>Порт:</span>
                     <span>${getPortName(cargo.portId)}</span>
                 </div>
+                ` : ''}
                 <div style="display: flex; gap: 10px; margin-top: 10px; align-items: center;">
                     <input type="number" 
                            id="market-cargo-amount-${cargo.id}" 
@@ -372,7 +442,64 @@ function renderMarket() {
             </div>
         </div>
         `;
-    }).join('');
+    };
+
+    let cargoListHTML = '';
+    if (marketGroupByPort && marketFilterPort === 'all') {
+        // Группировка по портам
+        const portIds = Object.keys(groupedCargo).sort((a, b) => {
+            const portA = getPortName(a);
+            const portB = getPortName(b);
+            return portA.localeCompare(portB, 'ru');
+        });
+        
+        portIds.forEach(portId => {
+            const portCargo = groupedCargo[portId];
+            cargoListHTML += `
+                <div style="margin-bottom: 25px;">
+                    <h3 style="background: #4a90e2; color: white; padding: 10px; border-radius: 5px 5px 0 0; margin: 0;">
+                        🏭 ${getPortName(portId)} (${portCargo.length} ${portCargo.length === 1 ? 'предложение' : 'предложений'})
+                    </h3>
+                    <div style="border: 1px solid #4a90e2; border-top: none; border-radius: 0 0 5px 5px; padding: 10px;">
+                        ${portCargo.map(renderCargoItem).join('')}
+                    </div>
+                </div>
+            `;
+        });
+    } else {
+        // Обычный список без группировки
+        cargoListHTML = sortedCargo.map(renderCargoItem).join('');
+    }
+
+    marketList.innerHTML = `
+        <div class="market-filters" style="margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <label style="font-weight: bold;">Фильтр по порту:</label>
+                <select id="market-port-filter" 
+                        onchange="setMarketFilterPort(this.value)"
+                        style="padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 150px;">
+                    <option value="all">Все порты</option>
+                    ${ports.map(port => `
+                        <option value="${port.id}" ${marketFilterPort === port.id ? 'selected' : ''}>
+                            ${port.name}
+                        </option>
+                    `).join('')}
+                </select>
+                <label style="margin-left: 10px; font-weight: bold;">
+                    <input type="checkbox" 
+                           id="market-group-by-port"
+                           ${marketGroupByPort ? 'checked' : ''}
+                           onchange="setMarketGroupByPort(this.checked)"
+                           style="margin-right: 5px;">
+                    Группировать по портам
+                </label>
+                <span style="margin-left: auto; color: #666; font-size: 0.9em;">
+                    Всего: ${filteredCargo.length} ${filteredCargo.length === 1 ? 'предложение' : 'предложений'}
+                </span>
+            </div>
+        </div>
+        ${cargoListHTML}
+    `;
 }
 
 async function openShipModal(shipId) {
@@ -881,6 +1008,17 @@ function calculateTravelCost(ship, port) {
     return 10; // Упрощенно
 }
 
+// Функции для фильтрации и группировки рынка
+function setMarketFilterPort(portId) {
+    marketFilterPort = portId;
+    renderMarket();
+}
+
+function setMarketGroupByPort(group) {
+    marketGroupByPort = group;
+    renderMarket();
+}
+
 // Экспорт функций для использования в HTML
 window.openShipModal = openShipModal;
 window.openPortModal = openPortModal;
@@ -895,4 +1033,6 @@ window.updateRefuelPrice = updateRefuelPrice;
 window.buyCargo = buyCargo;
 window.confirmBuyCargo = confirmBuyCargo;
 window.updateMarketPrice = updateMarketPrice;
+window.setMarketFilterPort = setMarketFilterPort;
+window.setMarketGroupByPort = setMarketGroupByPort;
 window.purchaseShip = purchaseShip;
