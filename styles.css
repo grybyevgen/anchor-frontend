@@ -16,20 +16,26 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 15px;
-    background: var(--tg-theme-header-bg-color, #2481cc);
-    color: var(--tg-theme-header-text-color, #ffffff);
+    background: #2481cc !important; /* Явно задаем синий цвет */
+    color: #ffffff !important; /* Явно задаем белый текст */
     border-radius: 10px;
     margin-bottom: 15px;
 }
 
 .header h1 {
     font-size: 20px;
+    color: #ffffff !important; /* Убеждаемся, что заголовок белый */
 }
 
 .user-info {
     display: flex;
     gap: 15px;
     font-size: 14px;
+    color: #ffffff !important; /* Убеждаемся, что текст белый */
+}
+
+.user-info span {
+    color: #ffffff !important; /* Убеждаемся, что все элементы белые */
 }
 
 .tabs {

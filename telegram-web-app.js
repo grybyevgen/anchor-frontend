@@ -6,8 +6,13 @@ tg.ready();
 tg.expand();
 
 // Настройка цветовой схемы
-tg.setHeaderColor('#2481cc');
-tg.setBackgroundColor('#ffffff');
+// Используем синий цвет для шапки и белый для фона
+tg.setHeaderColor('#2481cc'); // Синий цвет для шапки
+tg.setBackgroundColor('#ffffff'); // Белый фон
+
+// Также настраиваем цвета через CSS переменные
+document.documentElement.style.setProperty('--tg-theme-header-bg-color', '#2481cc');
+document.documentElement.style.setProperty('--tg-theme-header-text-color', '#ffffff');
 
 // Получение данных пользователя
 const user = tg.initDataUnsafe?.user || {};
