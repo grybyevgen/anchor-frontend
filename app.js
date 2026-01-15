@@ -138,6 +138,7 @@ async function initUser() {
             })
         });
         currentUser.coins = data.coins || 0;
+        currentUser.userId = data.userId; // Сохраняем UUID пользователя
     } catch (error) {
         console.error('Ошибка инициализации пользователя:', error);
     }
@@ -151,6 +152,7 @@ async function loadUserData() {
         const data = await apiRequest(`${API_URL}/users/${currentUser.id}`);
         if (data.success) {
             currentUser.coins = data.coins;
+            currentUser.userId = data.userId; // Сохраняем UUID пользователя
             ships = data.ships || [];
         }
     } catch (error) {
@@ -530,9 +532,12 @@ async function repairShip(shipId) {
 
 async function buyCargo(cargoId) {
     try {
+        // Используем userId (UUID) если он есть, иначе используем telegramId
+        const userId = currentUser.userId || currentUser.id;
+        
         const data = await apiRequest(`${API_URL}/market/${cargoId}/buy`, {
             method: 'POST',
-            body: JSON.stringify({ userId: currentUser.id })
+            body: JSON.stringify({ userId: userId })
         });
         
         if (data.success) {
@@ -575,9 +580,12 @@ function showBuyShipModal() {
 
 async function purchaseShip(shipType) {
     try {
+        // Используем userId (UUID) если он есть, иначе используем telegramId
+        const userId = currentUser.userId || currentUser.id;
+        
         const data = await apiRequest(`${API_URL}/ships/buy`, {
             method: 'POST',
-            body: JSON.stringify({ userId: currentUser.id, type: shipType })
+            body: JSON.stringify({ userId: userId, type: shipType })
         });
         
         if (data.success) {
