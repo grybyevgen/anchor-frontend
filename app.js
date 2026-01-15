@@ -474,6 +474,57 @@ async function openShipModal(shipId) {
                 </div>
             </div>
             
+            ${ship.fuel < ship.maxFuel && !ship.isTraveling ? (() => {
+                // Находим нефть на рынке в порту судна
+                const availableOil = marketCargo.filter(cargo => 
+                    cargo.type === 'oil' && 
+                    cargo.portId === ship.currentPortId
+                );
+                const fuelNeeded = ship.maxFuel - ship.fuel;
+                
+                return `
+                    <div style="margin: 15px 0;">
+                        <h4>🛢️ Бункеровка (заправка топливом):</h4>
+                        <div class="stat">
+                            <span>Текущее топливо:</span>
+                            <span>${ship.fuel}/${ship.maxFuel}</span>
+                        </div>
+                        ${availableOil.length > 0 ? `
+                            ${availableOil.map(oil => {
+                                const maxAvailable = Math.min(oil.amount, fuelNeeded);
+                                const pricePerUnit = Math.floor(oil.price / oil.amount);
+                                return `
+                                    <div class="cargo-option" style="margin-bottom: 10px;">
+                                        <div><strong>Нефть</strong> - Доступно: ${oil.amount} - 💰 ${pricePerUnit}/ед.</div>
+                                        <div style="display: flex; gap: 10px; margin-top: 5px; align-items: center;">
+                                            <input type="number" 
+                                                   id="refuel-amount-${oil.id}-${ship.id}" 
+                                                   min="1" 
+                                                   max="${maxAvailable}" 
+                                                   value="${maxAvailable > 0 ? 1 : 0}" 
+                                                   style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;"
+                                                   ${maxAvailable === 0 ? 'disabled' : ''}
+                                                   onchange="updateRefuelPrice('${oil.id}', '${ship.id}', ${pricePerUnit})">
+                                            <span>шт. (макс. ${maxAvailable}, нужно ${fuelNeeded})</span>
+                                            <span id="refuel-price-${oil.id}-${ship.id}" style="font-weight: bold;">💰 ${pricePerUnit}</span>
+                                            <button class="btn-primary" 
+                                                    onclick="confirmRefuel('${ship.id}', '${oil.id}', ${oil.amount}, ${fuelNeeded})"
+                                                    ${maxAvailable === 0 ? 'disabled' : ''}>
+                                                Заправить
+                                            </button>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        ` : `
+                            <div style="padding: 10px; background: #f0f0f0; border-radius: 5px;">
+                                В этом порту нет нефти на рынке для заправки
+                            </div>
+                        `}
+                    </div>
+                `;
+            })() : ''}
+            
             ${ship.health < ship.maxHealth ? `
                 <button class="btn-secondary" onclick="repairShip('${ship.id}')">Починить судно</button>
             ` : ''}
@@ -611,6 +662,70 @@ async function repairShip(shipId) {
         if (data.success) {
             showSuccess(`Судно отремонтировано! Стоимость: 💰 ${data.cost}`);
             await loadUserData();
+            updateUI();
+            openShipModal(shipId);
+        }
+    } catch (error) {
+        // Ошибка уже обработана в apiRequest
+    }
+}
+
+// Функция обновления цены заправки
+function updateRefuelPrice(oilId, shipId, pricePerUnit) {
+    const inputId = `refuel-amount-${oilId}-${shipId}`;
+    const priceId = `refuel-price-${oilId}-${shipId}`;
+    const amountInput = document.getElementById(inputId);
+    const priceElement = document.getElementById(priceId);
+    
+    if (amountInput && priceElement) {
+        const amount = parseInt(amountInput.value) || 0;
+        const totalPrice = pricePerUnit * amount;
+        priceElement.textContent = `💰 ${totalPrice}`;
+    }
+}
+
+// Функция подтверждения заправки
+async function confirmRefuel(shipId, oilId, maxAvailable, fuelNeeded) {
+    const inputId = `refuel-amount-${oilId}-${shipId}`;
+    const amountInput = document.getElementById(inputId);
+    
+    if (!amountInput) {
+        showError('Ошибка: поле ввода количества не найдено');
+        return;
+    }
+    
+    const amount = parseInt(amountInput.value);
+    
+    if (!amount || amount <= 0) {
+        showError('Количество должно быть больше 0');
+        return;
+    }
+    
+    if (amount > fuelNeeded) {
+        showError(`Нельзя заправить больше, чем нужно. Нужно: ${fuelNeeded}`);
+        return;
+    }
+    
+    if (amount > maxAvailable) {
+        showError(`Недостаточно нефти на рынке. Доступно: ${maxAvailable}`);
+        return;
+    }
+    
+    await refuelShip(shipId, oilId, amount);
+}
+
+// Функция заправки судна
+async function refuelShip(shipId, cargoId, amount) {
+    try {
+        const data = await apiRequest(`${API_URL}/ships/${shipId}/refuel`, {
+            method: 'POST',
+            body: JSON.stringify({ cargoId, amount })
+        });
+        
+        if (data.success) {
+            showSuccess(`Судно заправлено на ${data.fueled} единиц! Стоимость: 💰 ${data.cost}`);
+            await loadUserData();
+            await loadMarket();
             updateUI();
             openShipModal(shipId);
         }
@@ -774,6 +889,9 @@ window.selectCargo = selectCargo;
 window.confirmLoadCargo = confirmLoadCargo;
 window.unloadCargo = unloadCargo;
 window.repairShip = repairShip;
+window.refuelShip = refuelShip;
+window.confirmRefuel = confirmRefuel;
+window.updateRefuelPrice = updateRefuelPrice;
 window.buyCargo = buyCargo;
 window.confirmBuyCargo = confirmBuyCargo;
 window.updateMarketPrice = updateMarketPrice;
