@@ -51,9 +51,10 @@ function startAutoRefresh() {
     
     autoRefreshInterval = setInterval(async () => {
         try {
-            await checkCompletedTravels();
-            await loadUserData();
-            await loadMarket();
+            // Фоновое обновление без показа индикатора загрузки
+            await checkCompletedTravels(false);
+            await loadUserData(false);
+            await loadMarket(false);
             updateUI();
         } catch (error) {
             console.error('Ошибка автообновления:', error);
@@ -69,9 +70,12 @@ function stopAutoRefresh() {
 }
 
 // Универсальная функция для обработки API запросов
-async function apiRequest(url, options = {}) {
+// showLoading: показывать ли индикатор загрузки (по умолчанию true)
+async function apiRequest(url, options = {}, showLoading = true) {
     try {
-        setLoading(true);
+        if (showLoading) {
+            setLoading(true);
+        }
         const response = await fetch(url, {
             ...options,
             headers: {
@@ -93,10 +97,15 @@ async function apiRequest(url, options = {}) {
         return data;
     } catch (error) {
         console.error('API Error:', error);
-        showError(error.message || 'Ошибка соединения с сервером');
+        // Показываем ошибку только если это не фоновый запрос
+        if (showLoading) {
+            showError(error.message || 'Ошибка соединения с сервером');
+        }
         throw error;
     } finally {
-        setLoading(false);
+        if (showLoading) {
+            setLoading(false);
+        }
     }
 }
 
@@ -144,12 +153,12 @@ async function initUser() {
     }
 }
 
-async function loadUserData() {
+async function loadUserData(showLoading = true) {
     try {
-        // Сначала проверяем завершенные путешествия
-        await checkCompletedTravels();
+        // Сначала проверяем завершенные путешествия (без индикатора)
+        await checkCompletedTravels(false);
         
-        const data = await apiRequest(`${API_URL}/users/${currentUser.id}`);
+        const data = await apiRequest(`${API_URL}/users/${currentUser.id}`, {}, showLoading);
         if (data.success) {
             currentUser.coins = data.coins;
             currentUser.userId = data.userId; // Сохраняем UUID пользователя
@@ -160,9 +169,9 @@ async function loadUserData() {
     }
 }
 
-async function loadPorts() {
+async function loadPorts(showLoading = true) {
     try {
-        const data = await apiRequest(`${API_URL}/ports`);
+        const data = await apiRequest(`${API_URL}/ports`, {}, showLoading);
         if (data.success) {
             ports = data.ports || [];
         }
@@ -171,9 +180,9 @@ async function loadPorts() {
     }
 }
 
-async function loadMarket() {
+async function loadMarket(showLoading = true) {
     try {
-        const data = await apiRequest(`${API_URL}/market`);
+        const data = await apiRequest(`${API_URL}/market`, {}, showLoading);
         if (data.success) {
             marketCargo = data.cargo || [];
         }
@@ -183,11 +192,11 @@ async function loadMarket() {
 }
 
 // Проверить завершенные путешествия
-async function checkCompletedTravels() {
+async function checkCompletedTravels(showLoading = false) {
     try {
         await apiRequest(`${API_URL}/ships/check-travels`, {
             method: 'POST'
-        });
+        }, showLoading);
     } catch (error) {
         // Игнорируем ошибки проверки
         console.error('Ошибка проверки путешествий:', error);
@@ -197,7 +206,7 @@ async function checkCompletedTravels() {
 // Проверить конкретное судно
 async function checkShipTravelStatus(shipId) {
     try {
-        const data = await apiRequest(`${API_URL}/ships/${shipId}/check-travel`);
+        const data = await apiRequest(`${API_URL}/ships/${shipId}/check-travel`, {}, false);
         return data.completed || false;
     } catch (error) {
         return false;
@@ -372,7 +381,7 @@ async function openShipModal(shipId) {
             const completed = await checkShipTravelStatus(shipId);
             if (completed) {
                 clearInterval(statusInterval);
-                await loadUserData();
+                await loadUserData(false); // Фоновое обновление без индикатора
                 openShipModal(shipId); // Переоткрываем модальное окно с обновленными данными
             }
         }, 5000);
