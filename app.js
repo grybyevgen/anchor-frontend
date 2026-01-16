@@ -31,19 +31,27 @@ async function initApp() {
         return;
     }
 
-    // Инициализируем пользователя на сервере
-    await initUser();
+    // Показываем индикатор загрузки один раз для всей инициализации
+    setLoading(true);
     
-    // Загружаем данные
-    await loadUserData();
-    await loadPorts();
-    await loadMarket();
-    
-    // Обновляем UI
-    updateUI();
-    
-    // Запускаем автообновление данных каждые 60 секунд
-    startAutoRefresh();
+    try {
+        // Инициализируем пользователя на сервере (без своего индикатора)
+        await initUser(false);
+        
+        // Загружаем данные (без своих индикаторов)
+        await loadUserData(false);
+        await loadPorts(false);
+        await loadMarket(false);
+        
+        // Обновляем UI
+        updateUI();
+        
+        // Запускаем автообновление данных каждые 60 секунд
+        startAutoRefresh();
+    } finally {
+        // Скрываем индикатор загрузки после всех операций
+        setLoading(false);
+    }
 }
 
 // Автообновление данных
@@ -142,7 +150,7 @@ function showSuccess(message) {
     }
 }
 
-async function initUser() {
+async function initUser(showLoading = true) {
     try {
         const data = await apiRequest(`${API_URL}/users/init`, {
             method: 'POST',
@@ -150,7 +158,7 @@ async function initUser() {
                 telegramId: currentUser.id,
                 username: currentUser.username
             })
-        });
+        }, showLoading);
         currentUser.coins = data.coins || 0;
         currentUser.userId = data.userId; // Сохраняем UUID пользователя
     } catch (error) {
