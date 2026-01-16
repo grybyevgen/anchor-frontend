@@ -18,6 +18,7 @@ document.documentElement.style.setProperty('--tg-theme-header-text-color', '#fff
 const user = tg.initDataUnsafe?.user || {};
 const userId = user.id || null;
 const username = user.username || user.first_name || 'Игрок';
+const photoUrl = user.photo_url || null;
 
 // Экспорт для использования в других файлах
 window.TelegramWebApp = {
@@ -25,6 +26,7 @@ window.TelegramWebApp = {
     user,
     userId,
     username,
+    photoUrl,
     initData: tg.initData,
     sendData: (data) => tg.sendData(JSON.stringify(data))
 };

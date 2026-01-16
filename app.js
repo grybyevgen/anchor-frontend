@@ -22,7 +22,8 @@ async function initApp() {
     // Получаем данные пользователя из Telegram
     currentUser = {
         id: window.TelegramWebApp.userId,
-        username: window.TelegramWebApp.username
+        username: window.TelegramWebApp.username,
+        photoUrl: window.TelegramWebApp.photoUrl
     };
 
     if (!currentUser.id) {
@@ -263,6 +264,15 @@ function updateUI() {
     // Обновляем монеты
     document.getElementById('coins').textContent = `💰 ${currentUser.coins || 0}`;
     document.getElementById('username').textContent = currentUser.username;
+    
+    // Обновляем фото профиля
+    const userPhotoElement = document.getElementById('user-photo');
+    if (currentUser.photoUrl && userPhotoElement) {
+        userPhotoElement.src = currentUser.photoUrl;
+        userPhotoElement.style.display = 'block';
+    } else if (userPhotoElement) {
+        userPhotoElement.style.display = 'none';
+    }
 
     // Обновляем список судов
     renderShips();
