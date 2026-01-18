@@ -575,6 +575,13 @@ async function openShipModal(shipId) {
             ${ship.cargo ? `
                 <div style="margin: 15px 0;">
                     <h4>Текущий груз: ${getCargoName(ship.cargo.type)} (${ship.cargo.amount})</h4>
+                    <div style="margin: 10px 0;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Куда выгрузить:</label>
+                        <select id="unload-destination-${ship.id}" style="padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; margin-bottom: 10px;">
+                            <option value="market">📦 На рынок</option>
+                            <option value="port">🏭 В порт</option>
+                        </select>
+                    </div>
                     <button class="btn-primary" onclick="unloadCargo('${ship.id}')">Выгрузить груз</button>
                 </div>
             ` : `
@@ -612,8 +619,8 @@ async function openShipModal(shipId) {
                 <h4>Отправить в порт:</h4>
                 <div class="port-selector">
                     ${ports.filter(p => p.id !== ship.currentPortId).map(port => `
-                        <div class="port-option" onclick="sendShipToPort('${ship.id}', '${port.id}')">
-                            ${port.name} (💰 ${calculateTravelCost(ship, port)})
+                        <div class="port-option" onclick="confirmSendShipToPort('${ship.id}', '${port.id}', '${port.name}')">
+                            ${port.name} (💰 ${calculateTravelCost(ship, port)} - рассчитывается при отправке)
                         </div>
                     `).join('')}
                 </div>
@@ -702,19 +709,16 @@ async function openPortModal(portId) {
     modal.style.display = 'block';
 }
 
-async function sendShipToPort(shipId, portId) {
+async function confirmSendShipToPort(shipId, portId, portName) {
     const ship = ships.find(s => s.id === shipId);
-    const port = ports.find(p => p.id === portId);
     
-    if (!ship || !port) return;
-    
-    const cost = calculateTravelCost(ship, port);
-    
-    if (ship.fuel < cost) {
-        showError('Недостаточно топлива!');
+    if (!ship) {
+        showError('Судно не найдено');
         return;
     }
     
+    // Сначала отправляем запрос, чтобы получить точную стоимость
+    // Если недостаточно топлива - сервер вернет ошибку с деталями
     try {
         const data = await apiRequest(`${API_URL}/ships/${shipId}/travel`, {
             method: 'POST',
@@ -722,7 +726,9 @@ async function sendShipToPort(shipId, portId) {
         });
         
         if (data.success) {
-            showSuccess(`Судно отправлено в ${port.name}!`);
+            const fuelInfo = data.fuelCost ? ` (расход топлива: ${data.fuelCost})` : '';
+            const distanceInfo = data.distance ? ` (расстояние: ${data.distance} миль)` : '';
+            showSuccess(`Судно отправлено в ${portName}!${fuelInfo}${distanceInfo}`);
             await loadUserData();
             updateUI();
             document.getElementById('ship-modal').style.display = 'none';
@@ -730,6 +736,13 @@ async function sendShipToPort(shipId, portId) {
     } catch (error) {
         // Ошибка уже обработана в apiRequest
     }
+}
+
+async function sendShipToPort(shipId, portId) {
+    // Обертка для обратной совместимости
+    const port = ports.find(p => p.id === portId);
+    if (!port) return;
+    await confirmSendShipToPort(shipId, portId, port.name);
 }
 
 // Функция подтверждения загрузки груза с выбором количества
@@ -782,12 +795,40 @@ async function selectCargo(shipId, cargoType, amount) {
 
 async function unloadCargo(shipId) {
     try {
+        // Получаем выбранное место назначения
+        const destinationSelect = document.getElementById(`unload-destination-${shipId}`);
+        const destination = destinationSelect ? destinationSelect.value : 'market';
+        
         const data = await apiRequest(`${API_URL}/ships/${shipId}/unload`, {
-            method: 'POST'
+            method: 'POST',
+            body: JSON.stringify({ destination })
         });
         
         if (data.success) {
-            showSuccess(`Груз выгружен! Получено: 💰 ${data.reward}`);
+            // Формируем детальное сообщение о выгрузке
+            const destinationText = destination === 'market' ? 'на рынок' : 'в порт';
+            let message = `Груз выгружен ${destinationText}! 💰 Получено: ${data.reward} монет`;
+            
+            // Добавляем детали в одну строку для совместимости с alert
+            const details = [];
+            if (data.grossReward && data.grossReward !== data.reward) {
+                details.push(`Брутто: ${data.grossReward}`);
+            }
+            if (data.portFees !== undefined && data.portFees > 0) {
+                details.push(`Сборы: ${data.portFees}`);
+            }
+            if (data.profitTax !== undefined && data.profitTax > 0) {
+                details.push(`Налог: ${data.profitTax}`);
+            }
+            if (data.distance) {
+                details.push(`Расстояние: ${data.distance} миль`);
+            }
+            
+            if (details.length > 0) {
+                message += ` (${details.join(', ')})`;
+            }
+            
+            showSuccess(message);
             await loadUserData();
             await loadMarket();
             updateUI();
@@ -944,11 +985,11 @@ async function buyCargo(cargoId, amount) {
     }
 }
 
-function showBuyShipModal() {
+async function showBuyShipModal() {
     const shipTypes = [
-        { type: 'tanker', name: 'Танкер', price: 1000, description: 'Перевозит нефть' },
-        { type: 'cargo', name: 'Грузовое судно', price: 1500, description: 'Перевозит материалы' },
-        { type: 'supply', name: 'Снабженец', price: 1200, description: 'Перевозит провизию' }
+        { type: 'tanker', name: 'Танкер', description: 'Перевозит нефть' },
+        { type: 'cargo', name: 'Грузовое судно', description: 'Перевозит материалы' },
+        { type: 'supply', name: 'Снабженец', description: 'Перевозит провизию' }
     ];
     
     const modal = document.getElementById('ship-modal');
@@ -956,19 +997,51 @@ function showBuyShipModal() {
     const body = document.getElementById('modal-body');
     
     title.textContent = 'Купить судно';
-    body.innerHTML = `
-        <div class="cargo-selector">
-            ${shipTypes.map(st => `
-                <div class="cargo-option" onclick="purchaseShip('${st.type}')">
-                    <h4>${st.name}</h4>
-                    <p>${st.description}</p>
-                    <p>💰 ${st.price}</p>
-                </div>
-            `).join('')}
-        </div>
-    `;
-    
+    body.innerHTML = '<div class="loading">Загрузка цен...</div>';
     modal.style.display = 'block';
+    
+    try {
+        const userId = currentUser.userId || currentUser.id;
+        
+        // Запрашиваем актуальные цены с сервера
+        const pricePromises = shipTypes.map(st => 
+            apiRequest(`${API_URL}/ships/price/${userId}/${st.type}`, {}, false)
+                .then(data => ({ ...st, ...data }))
+                .catch(error => ({ ...st, error: error.message }))
+        );
+        
+        const shipsWithPrices = await Promise.all(pricePromises);
+        
+        body.innerHTML = `
+            <div class="cargo-selector">
+                ${shipsWithPrices.map(st => `
+                    <div class="cargo-option" onclick="purchaseShip('${st.type}')">
+                        <h4>${st.typeName || st.name}</h4>
+                        <p>${st.description}</p>
+                        ${st.error ? `
+                            <p style="color: red;">Ошибка: ${st.error}</p>
+                        ` : `
+                            <p>💰 ${st.currentPrice || 'N/A'}</p>
+                            ${st.existingShipsCount > 0 ? `
+                                <p style="font-size: 0.9em; color: #666;">
+                                    У вас уже ${st.existingShipsCount} ${st.existingShipsCount === 1 ? 'судно' : st.existingShipsCount < 5 ? 'судна' : 'судов'} этого типа
+                                </p>
+                                <p style="font-size: 0.85em; color: #999;">
+                                    Базовая цена: ${st.basePrice} (это ${st.nextShipNumber}-е судно)
+                                </p>
+                            ` : ''}
+                        `}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } catch (error) {
+        body.innerHTML = `
+            <div class="loading" style="color: red;">
+                Ошибка загрузки цен: ${error.message}
+            </div>
+        `;
+    }
 }
 
 async function purchaseShip(shipType) {
@@ -1022,8 +1095,10 @@ function getAvailableCargoForPort(portId) {
 }
 
 function calculateTravelCost(ship, port) {
-    // Простая формула: расстояние * базовый расход
-    return 10; // Упрощенно
+    // Стоимость путешествия рассчитывается на сервере на основе расстояния и типа судна
+    // Не можем точно рассчитать на фронтенде без данных о расстоянии
+    // Показываем "?" - точная стоимость будет показана при отправке
+    return '?';
 }
 
 // Функции для фильтрации и группировки рынка
@@ -1041,6 +1116,7 @@ function setMarketGroupByPort(group) {
 window.openShipModal = openShipModal;
 window.openPortModal = openPortModal;
 window.sendShipToPort = sendShipToPort;
+window.confirmSendShipToPort = confirmSendShipToPort;
 window.selectCargo = selectCargo;
 window.confirmLoadCargo = confirmLoadCargo;
 window.unloadCargo = unloadCargo;
@@ -1054,3 +1130,4 @@ window.updateMarketPrice = updateMarketPrice;
 window.setMarketFilterPort = setMarketFilterPort;
 window.setMarketGroupByPort = setMarketGroupByPort;
 window.purchaseShip = purchaseShip;
+window.showBuyShipModal = showBuyShipModal;
