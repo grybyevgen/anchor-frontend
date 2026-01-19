@@ -6,11 +6,8 @@ const API_URL = 'https://anchor-game-production.up.railway.app/api';
 let currentUser = null;
 let ships = [];
 let ports = [];
-let marketCargo = [];
 let isLoading = false;
 let autoRefreshInterval = null;
-let marketFilterPort = 'all'; // Фильтр порта: 'all' или ID порта
-let marketGroupByPort = false; // Группировать ли грузы по портам
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', () => {
@@ -41,7 +38,6 @@ async function initApp() {
         // Загружаем данные (без своих индикаторов)
         await loadUserData(false);
         await loadPorts(false);
-        await loadMarket(false);
         
         // Обновляем UI
         updateUI();
@@ -193,17 +189,6 @@ async function loadPorts(showLoading = true) {
     }
 }
 
-async function loadMarket(showLoading = true) {
-    try {
-        const data = await apiRequest(`${API_URL}/market`, {}, showLoading);
-        if (data.success) {
-            marketCargo = data.cargo || [];
-        }
-    } catch (error) {
-        console.error('Ошибка загрузки рынка:', error);
-    }
-}
-
 // Проверить завершенные путешествия
 async function checkCompletedTravels(showLoading = false) {
     try {
@@ -256,16 +241,6 @@ async function switchTab(tabName) {
     // Активируем выбранную вкладку
     document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
     document.getElementById(`${tabName}-tab`).classList.add('active');
-    
-    // Обновляем данные рынка при переключении на вкладку "Рынок"
-    if (tabName === 'market') {
-        try {
-            await loadMarket(false); // Загружаем без индикатора загрузки
-            renderMarket();
-        } catch (error) {
-            console.error('Ошибка загрузки рынка:', error);
-        }
-    }
 }
 
 function updateUI() {
@@ -287,9 +262,6 @@ function updateUI() {
     
     // Обновляем список портов
     renderPorts();
-    
-    // Обновляем рынок
-    renderMarket();
 }
 
 function renderShips() {
@@ -345,180 +317,6 @@ function renderPorts() {
     `).join('');
 }
 
-function renderMarket() {
-    const marketList = document.getElementById('market-list');
-    
-    // Фильтруем грузы по выбранному порту
-    let filteredCargo = marketCargo;
-    if (marketFilterPort !== 'all') {
-        filteredCargo = marketCargo.filter(cargo => cargo.portId === marketFilterPort);
-    }
-    
-    // Сортируем/группируем грузы
-    let sortedCargo = [...filteredCargo];
-    if (marketGroupByPort) {
-        // Группируем по портам, сортируем по названию порта
-        sortedCargo.sort((a, b) => {
-            const portA = getPortName(a.portId);
-            const portB = getPortName(b.portId);
-            if (portA !== portB) {
-                return portA.localeCompare(portB, 'ru');
-            }
-            // Если порты одинаковые, сортируем по типу груза
-            return getCargoName(a.type).localeCompare(getCargoName(b.type), 'ru');
-        });
-    } else {
-        // Обычная сортировка по типу груза
-        sortedCargo.sort((a, b) => {
-            return getCargoName(a.type).localeCompare(getCargoName(b.type), 'ru');
-        });
-    }
-    
-    if (filteredCargo.length === 0) {
-        const noCargoMessage = marketFilterPort !== 'all' 
-            ? `<div class="loading">В выбранном порту нет грузов на рынке</div>`
-            : '<div class="loading">На рынке пока нет грузов</div>';
-        marketList.innerHTML = `
-            <div class="market-filters" style="margin-bottom: 15px;">
-                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                    <label style="font-weight: bold;">Фильтр по порту:</label>
-                    <select id="market-port-filter" 
-                            onchange="setMarketFilterPort(this.value)"
-                            style="padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 150px;">
-                        <option value="all">Все порты</option>
-                        ${ports.map(port => `
-                            <option value="${port.id}" ${marketFilterPort === port.id ? 'selected' : ''}>
-                                ${port.name}
-                            </option>
-                        `).join('')}
-                    </select>
-                    <label style="margin-left: 10px; font-weight: bold;">
-                        <input type="checkbox" 
-                               id="market-group-by-port"
-                               ${marketGroupByPort ? 'checked' : ''}
-                               onchange="setMarketGroupByPort(this.checked)"
-                               style="margin-right: 5px;">
-                        Группировать по портам
-                    </label>
-                </div>
-            </div>
-            ${noCargoMessage}
-        `;
-        return;
-    }
-
-    // Группируем грузы по портам если включена группировка
-    let groupedCargo = {};
-    if (marketGroupByPort) {
-        sortedCargo.forEach(cargo => {
-            const portId = cargo.portId;
-            if (!groupedCargo[portId]) {
-                groupedCargo[portId] = [];
-            }
-            groupedCargo[portId].push(cargo);
-        });
-    }
-
-    const renderCargoItem = (cargo) => {
-        const pricePerUnit = Math.floor(cargo.price / cargo.amount);
-        const maxAvailable = Math.min(cargo.amount, 100);
-        return `
-        <div class="market-item">
-            <h3>${getCargoName(cargo.type)}</h3>
-            <div class="port-info">
-                <div class="stat">
-                    <span>Количество:</span>
-                    <span>${cargo.amount}</span>
-                </div>
-                <div class="stat">
-                    <span>Цена за единицу:</span>
-                    <span>💰 ${pricePerUnit}</span>
-                </div>
-                ${!marketGroupByPort || marketFilterPort !== 'all' ? `
-                <div class="stat">
-                    <span>Порт:</span>
-                    <span>${getPortName(cargo.portId)}</span>
-                </div>
-                ` : ''}
-                <div style="display: flex; gap: 10px; margin-top: 10px; align-items: center;">
-                    <input type="number" 
-                           id="market-cargo-amount-${cargo.id}" 
-                           min="1" 
-                           max="${maxAvailable}" 
-                           value="${maxAvailable > 0 ? 1 : 0}" 
-                           style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;"
-                           ${maxAvailable === 0 ? 'disabled' : ''}
-                           onchange="updateMarketPrice('${cargo.id}', ${pricePerUnit})">
-                    <span>шт. (макс. ${maxAvailable})</span>
-                    <span id="market-price-${cargo.id}" style="font-weight: bold;">💰 ${pricePerUnit}</span>
-                    <button class="btn-primary" 
-                            onclick="confirmBuyCargo('${cargo.id}', ${cargo.amount}, ${pricePerUnit})"
-                            ${maxAvailable === 0 ? 'disabled' : ''}>
-                        Купить
-                    </button>
-                </div>
-            </div>
-        </div>
-        `;
-    };
-
-    let cargoListHTML = '';
-    if (marketGroupByPort && marketFilterPort === 'all') {
-        // Группировка по портам
-        const portIds = Object.keys(groupedCargo).sort((a, b) => {
-            const portA = getPortName(a);
-            const portB = getPortName(b);
-            return portA.localeCompare(portB, 'ru');
-        });
-        
-        portIds.forEach(portId => {
-            const portCargo = groupedCargo[portId];
-            cargoListHTML += `
-                <div style="margin-bottom: 25px;">
-                    <h3 style="background: #4a90e2; color: white; padding: 10px; border-radius: 5px 5px 0 0; margin: 0;">
-                        🏭 ${getPortName(portId)} (${portCargo.length} ${portCargo.length === 1 ? 'предложение' : 'предложений'})
-                    </h3>
-                    <div style="border: 1px solid #4a90e2; border-top: none; border-radius: 0 0 5px 5px; padding: 10px;">
-                        ${portCargo.map(renderCargoItem).join('')}
-                    </div>
-                </div>
-            `;
-        });
-    } else {
-        // Обычный список без группировки
-        cargoListHTML = sortedCargo.map(renderCargoItem).join('');
-    }
-
-    marketList.innerHTML = `
-        <div class="market-filters" style="margin-bottom: 15px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <label style="font-weight: bold;">Фильтр по порту:</label>
-                <select id="market-port-filter" 
-                        onchange="setMarketFilterPort(this.value)"
-                        style="padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 150px;">
-                    <option value="all">Все порты</option>
-                    ${ports.map(port => `
-                        <option value="${port.id}" ${marketFilterPort === port.id ? 'selected' : ''}>
-                            ${port.name}
-                        </option>
-                    `).join('')}
-                </select>
-                <label style="margin-left: 10px; font-weight: bold;">
-                    <input type="checkbox" 
-                           id="market-group-by-port"
-                           ${marketGroupByPort ? 'checked' : ''}
-                           onchange="setMarketGroupByPort(this.checked)"
-                           style="margin-right: 5px;">
-                    Группировать по портам
-                </label>
-                <span style="margin-left: auto; color: #666; font-size: 0.9em;">
-                    Всего: ${filteredCargo.length} ${filteredCargo.length === 1 ? 'предложение' : 'предложений'}
-                </span>
-            </div>
-        </div>
-        ${cargoListHTML}
-    `;
-}
 
 async function openShipModal(shipId) {
     const ship = ships.find(s => s.id === shipId);
@@ -575,14 +373,7 @@ async function openShipModal(shipId) {
             ${ship.cargo ? `
                 <div style="margin: 15px 0;">
                     <h4>Текущий груз: ${getCargoName(ship.cargo.type)} (${ship.cargo.amount})</h4>
-                    <div style="margin: 10px 0;">
-                        <label style="display: block; margin-bottom: 5px; font-weight: bold;">Куда выгрузить:</label>
-                        <select id="unload-destination-${ship.id}" style="padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px; width: 100%; margin-bottom: 10px;">
-                            <option value="market">📦 На рынок</option>
-                            <option value="port">🏭 В порт</option>
-                        </select>
-                    </div>
-                    <button class="btn-primary" onclick="unloadCargo('${ship.id}')">Выгрузить груз</button>
+                    <button class="btn-primary" onclick="unloadCargo('${ship.id}')">Выгрузить груз в порт</button>
                 </div>
             ` : `
                 <div style="margin: 15px 0;">
@@ -627,11 +418,9 @@ async function openShipModal(shipId) {
             </div>
             
             ${ship.fuel < ship.maxFuel && !ship.isTraveling ? (() => {
-                // Находим нефть на рынке в порту судна
-                const availableOil = marketCargo.filter(cargo => 
-                    cargo.type === 'oil' && 
-                    cargo.portId === ship.currentPortId
-                );
+                // Находим нефть в порту судна
+                const port = ports.find(p => p.id === ship.currentPortId);
+                const availableOil = port ? port.availableCargo.find(cargo => cargo.type === 'oil') : null;
                 const fuelNeeded = ship.maxFuel - ship.fuel;
                 
                 return `
@@ -641,36 +430,34 @@ async function openShipModal(shipId) {
                             <span>Текущее топливо:</span>
                             <span>${ship.fuel}/${ship.maxFuel}</span>
                         </div>
-                        ${availableOil.length > 0 ? `
-                            ${availableOil.map(oil => {
-                                const maxAvailable = Math.min(oil.amount, fuelNeeded);
-                                const pricePerUnit = Math.floor(oil.price / oil.amount);
-                                return `
-                                    <div class="cargo-option" style="margin-bottom: 10px;">
-                                        <div><strong>Нефть</strong> - Доступно: ${oil.amount} - 💰 ${pricePerUnit}/ед.</div>
-                                        <div style="display: flex; gap: 10px; margin-top: 5px; align-items: center;">
-                                            <input type="number" 
-                                                   id="refuel-amount-${oil.id}-${ship.id}" 
-                                                   min="1" 
-                                                   max="${maxAvailable}" 
-                                                   value="${maxAvailable > 0 ? 1 : 0}" 
-                                                   style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;"
-                                                   ${maxAvailable === 0 ? 'disabled' : ''}
-                                                   onchange="updateRefuelPrice('${oil.id}', '${ship.id}', ${pricePerUnit})">
-                                            <span>шт. (макс. ${maxAvailable}, нужно ${fuelNeeded})</span>
-                                            <span id="refuel-price-${oil.id}-${ship.id}" style="font-weight: bold;">💰 ${pricePerUnit}</span>
-                                            <button class="btn-primary" 
-                                                    onclick="confirmRefuel('${ship.id}', '${oil.id}', ${oil.amount}, ${fuelNeeded})"
-                                                    ${maxAvailable === 0 ? 'disabled' : ''}>
-                                                Заправить
-                                            </button>
-                                        </div>
+                        ${availableOil && availableOil.amount > 0 ? (() => {
+                            const maxAvailable = Math.min(availableOil.amount, fuelNeeded);
+                            const pricePerUnit = availableOil.price || 0;
+                            return `
+                                <div class="cargo-option" style="margin-bottom: 10px;">
+                                    <div><strong>Нефть</strong> - Доступно: ${availableOil.amount} - 💰 ${pricePerUnit}/ед.</div>
+                                    <div style="display: flex; gap: 10px; margin-top: 5px; align-items: center;">
+                                        <input type="number" 
+                                               id="refuel-amount-${ship.id}" 
+                                               min="1" 
+                                               max="${maxAvailable}" 
+                                               value="${maxAvailable > 0 ? 1 : 0}" 
+                                               style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;"
+                                               ${maxAvailable === 0 ? 'disabled' : ''}
+                                               onchange="updateRefuelPriceFromPort('${ship.id}', ${pricePerUnit})">
+                                        <span>шт. (макс. ${maxAvailable}, нужно ${fuelNeeded})</span>
+                                        <span id="refuel-price-${ship.id}" style="font-weight: bold;">💰 ${pricePerUnit}</span>
+                                        <button class="btn-primary" 
+                                                onclick="confirmRefuelFromPort('${ship.id}', ${availableOil.amount}, ${fuelNeeded}, ${pricePerUnit})"
+                                                ${maxAvailable === 0 ? 'disabled' : ''}>
+                                            Заправить
+                                        </button>
                                     </div>
-                                `;
-                            }).join('')}
-                        ` : `
+                                </div>
+                            `;
+                        })() : `
                             <div style="padding: 10px; background: #f0f0f0; border-radius: 5px;">
-                                В этом порту нет нефти на рынке для заправки
+                                В этом порту нет нефти для заправки
                             </div>
                         `}
                     </div>
@@ -795,33 +582,26 @@ async function selectCargo(shipId, cargoType, amount) {
 
 async function unloadCargo(shipId) {
     try {
-        // Получаем выбранное место назначения
-        const destinationSelect = document.getElementById(`unload-destination-${shipId}`);
-        const destination = destinationSelect ? destinationSelect.value : 'market';
-        
+        // Всегда продаем в порт
         const data = await apiRequest(`${API_URL}/ships/${shipId}/unload`, {
             method: 'POST',
-            body: JSON.stringify({ destination })
+            body: JSON.stringify({ destination: 'port' })
         });
         
         if (data.success) {
             // Формируем детальное сообщение о выгрузке
-            const destinationText = destination === 'market' ? 'на рынок' : 'в порт';
-            let message = `Груз выгружен ${destinationText}! 💰 Получено: ${data.reward} монет`;
+            let message = `Груз выгружен в порт! 💰 Получено: ${data.reward} монет`;
             
             // Добавляем детали в одну строку для совместимости с alert
             const details = [];
-            if (data.grossReward && data.grossReward !== data.reward) {
-                details.push(`Брутто: ${data.grossReward}`);
+            if (data.grossProfit !== undefined) {
+                details.push(`Прибыль: ${data.grossProfit}`);
             }
             if (data.portFees !== undefined && data.portFees > 0) {
                 details.push(`Сборы: ${data.portFees}`);
             }
             if (data.profitTax !== undefined && data.profitTax > 0) {
                 details.push(`Налог: ${data.profitTax}`);
-            }
-            if (data.distance) {
-                details.push(`Расстояние: ${data.distance} миль`);
             }
             
             if (details.length > 0) {
@@ -830,7 +610,6 @@ async function unloadCargo(shipId) {
             
             showSuccess(message);
             await loadUserData();
-            await loadMarket();
             updateUI();
             openShipModal(shipId);
         }
@@ -856,10 +635,10 @@ async function repairShip(shipId) {
     }
 }
 
-// Функция обновления цены заправки
-function updateRefuelPrice(oilId, shipId, pricePerUnit) {
-    const inputId = `refuel-amount-${oilId}-${shipId}`;
-    const priceId = `refuel-price-${oilId}-${shipId}`;
+// Функция обновления цены заправки из порта
+function updateRefuelPriceFromPort(shipId, pricePerUnit) {
+    const inputId = `refuel-amount-${shipId}`;
+    const priceId = `refuel-price-${shipId}`;
     const amountInput = document.getElementById(inputId);
     const priceElement = document.getElementById(priceId);
     
@@ -870,9 +649,9 @@ function updateRefuelPrice(oilId, shipId, pricePerUnit) {
     }
 }
 
-// Функция подтверждения заправки
-async function confirmRefuel(shipId, oilId, maxAvailable, fuelNeeded) {
-    const inputId = `refuel-amount-${oilId}-${shipId}`;
+// Функция подтверждения заправки из порта
+async function confirmRefuelFromPort(shipId, maxAvailable, fuelNeeded, pricePerUnit) {
+    const inputId = `refuel-amount-${shipId}`;
     const amountInput = document.getElementById(inputId);
     
     if (!amountInput) {
@@ -893,25 +672,25 @@ async function confirmRefuel(shipId, oilId, maxAvailable, fuelNeeded) {
     }
     
     if (amount > maxAvailable) {
-        showError(`Недостаточно нефти на рынке. Доступно: ${maxAvailable}`);
+        showError(`Недостаточно нефти в порту. Доступно: ${maxAvailable}`);
         return;
     }
     
-    await refuelShip(shipId, oilId, amount);
+    await refuelShipFromPort(shipId, amount);
 }
 
-// Функция заправки судна
-async function refuelShip(shipId, cargoId, amount) {
+// Функция заправки судна из порта
+async function refuelShipFromPort(shipId, amount) {
     try {
         const data = await apiRequest(`${API_URL}/ships/${shipId}/refuel`, {
             method: 'POST',
-            body: JSON.stringify({ cargoId, amount })
+            body: JSON.stringify({ cargoType: 'oil', amount })
         });
         
         if (data.success) {
             showSuccess(`Судно заправлено на ${data.fueled} единиц! Стоимость: 💰 ${data.cost}`);
             await loadUserData();
-            await loadMarket();
+            await loadPorts(false);
             updateUI();
             openShipModal(shipId);
         }
@@ -920,70 +699,6 @@ async function refuelShip(shipId, cargoId, amount) {
     }
 }
 
-// Функция подтверждения покупки груза с рынка с выбором количества
-async function confirmBuyCargo(cargoId, maxAvailable, pricePerUnit) {
-    const inputId = `market-cargo-amount-${cargoId}`;
-    const amountInput = document.getElementById(inputId);
-    
-    if (!amountInput) {
-        showError('Ошибка: поле ввода количества не найдено');
-        return;
-    }
-    
-    const amount = parseInt(amountInput.value);
-    
-    if (!amount || amount <= 0) {
-        showError('Количество должно быть больше 0');
-        return;
-    }
-    
-    if (amount > 100) {
-        showError('Максимальное количество груза - 100 единиц');
-        return;
-    }
-    
-    if (amount > maxAvailable) {
-        showError(`Недостаточно груза на рынке. Доступно: ${maxAvailable}`);
-        return;
-    }
-    
-    await buyCargo(cargoId, amount);
-}
-
-// Функция обновления отображаемой цены при изменении количества
-function updateMarketPrice(cargoId, pricePerUnit) {
-    const inputId = `market-cargo-amount-${cargoId}`;
-    const priceId = `market-price-${cargoId}`;
-    const amountInput = document.getElementById(inputId);
-    const priceElement = document.getElementById(priceId);
-    
-    if (amountInput && priceElement) {
-        const amount = parseInt(amountInput.value) || 0;
-        const totalPrice = pricePerUnit * amount;
-        priceElement.textContent = `💰 ${totalPrice}`;
-    }
-}
-
-async function buyCargo(cargoId, amount) {
-    try {
-        // Используем userId (UUID) если он есть, иначе используем telegramId
-        const userId = currentUser.userId || currentUser.id;
-        
-        const data = await apiRequest(`${API_URL}/market/${cargoId}/buy`, {
-            method: 'POST',
-            body: JSON.stringify({ userId: userId, amount: amount })
-        });
-        
-        if (data.success) {
-            showSuccess(`Груз куплен! Загружено: ${data.boughtAmount || amount} единиц`);
-            await loadUserData();
-            await loadMarket();
-            updateUI();
-        }
-    } catch (error) {
-        // Ошибка уже обработана в apiRequest
-    }
-}
 
 async function showBuyShipModal() {
     const shipTypes = [
@@ -1101,17 +816,6 @@ function calculateTravelCost(ship, port) {
     return '?';
 }
 
-// Функции для фильтрации и группировки рынка
-function setMarketFilterPort(portId) {
-    marketFilterPort = portId;
-    renderMarket();
-}
-
-function setMarketGroupByPort(group) {
-    marketGroupByPort = group;
-    renderMarket();
-}
-
 // Экспорт функций для использования в HTML
 window.openShipModal = openShipModal;
 window.openPortModal = openPortModal;
@@ -1121,13 +825,8 @@ window.selectCargo = selectCargo;
 window.confirmLoadCargo = confirmLoadCargo;
 window.unloadCargo = unloadCargo;
 window.repairShip = repairShip;
-window.refuelShip = refuelShip;
-window.confirmRefuel = confirmRefuel;
-window.updateRefuelPrice = updateRefuelPrice;
-window.buyCargo = buyCargo;
-window.confirmBuyCargo = confirmBuyCargo;
-window.updateMarketPrice = updateMarketPrice;
-window.setMarketFilterPort = setMarketFilterPort;
-window.setMarketGroupByPort = setMarketGroupByPort;
+window.refuelShipFromPort = refuelShipFromPort;
+window.confirmRefuelFromPort = confirmRefuelFromPort;
+window.updateRefuelPriceFromPort = updateRefuelPriceFromPort;
 window.purchaseShip = purchaseShip;
 window.showBuyShipModal = showBuyShipModal;
