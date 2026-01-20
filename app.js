@@ -431,9 +431,25 @@ async function openShipModal(shipId) {
             </div>
             
             ${ship.fuel < ship.maxFuel && !ship.isTraveling ? (() => {
-                // Находим нефть в порту судна
+                // Находим порт судна
                 const port = ports.find(p => p.id === ship.currentPortId);
-                const availableOil = port ? port.availableCargo.find(cargo => cargo.type === 'oil') : null;
+                if (!port) return '';
+                
+                // Проверяем, генерирует ли порт нефть (бункеровка возможна только в таких портах)
+                const rules = PORT_GENERATION_RULES[port.name];
+                const canRefuel = rules && rules.generates === 'oil';
+                
+                if (!canRefuel) {
+                    return `
+                        <div style="margin: 15px 0; padding: 10px; background: #fff3e0; border-radius: 5px;">
+                            <h4>🛢️ Бункеровка (заправка топливом):</h4>
+                            <p style="color: #ff9800;">Бункеровка возможна только в портах, где генерируется нефть.</p>
+                            <p style="font-size: 0.9em; color: #666;">Текущий порт: ${port.name}</p>
+                        </div>
+                    `;
+                }
+                
+                const availableOil = port.availableCargo.find(cargo => cargo.type === 'oil');
                 const fuelNeeded = ship.maxFuel - ship.fuel;
                 
                 return `
