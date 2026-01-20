@@ -38,6 +38,7 @@ async function initApp() {
         // Загружаем данные (без своих индикаторов)
         await loadUserData(false);
         await loadPorts(false);
+        await loadPortGenerationRules(false);
         
         // Обновляем UI
         updateUI();
@@ -186,6 +187,18 @@ async function loadPorts(showLoading = true) {
         }
     } catch (error) {
         console.error('Ошибка загрузки портов:', error);
+    }
+}
+
+// Загрузить правила генерации ресурсов для портов
+async function loadPortGenerationRules(showLoading = true) {
+    try {
+        const data = await apiRequest(`${API_URL}/ports/generation-rules`, {}, showLoading);
+        if (data.success && data.rules) {
+            PORT_GENERATION_RULES = data.rules;
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки правил генерации портов:', error);
     }
 }
 
@@ -844,20 +857,8 @@ function getCargoName(type) {
 }
 
 // Правила генерации ресурсов для каждого порта
-const PORT_GENERATION_RULES = {
-    'Порт Владивосток': {
-        generates: 'oil',  // Генерирует нефть
-        requires: { materials: 1, provisions: 1 }  // Требует материалы и провизию
-    },
-    'Порт Новороссийск': {
-        generates: 'provisions',  // Генерирует провизию
-        requires: { materials: 1, oil: 1 }  // Требует материалы и нефть
-    },
-    'Порт Санкт-Петербург': {
-        generates: 'materials',  // Генерирует материалы
-        requires: { oil: 1, provisions: 1 }  // Требует нефть и провизию
-    }
-};
+// Теперь грузятся с backend, чтобы не было дублирования логики
+let PORT_GENERATION_RULES = {};
 
 function getPortName(portId) {
     const port = ports.find(p => p.id === portId);
