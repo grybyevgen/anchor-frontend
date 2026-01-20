@@ -482,14 +482,56 @@ async function openPortModal(portId) {
     const body = document.getElementById('port-modal-body');
 
     title.textContent = port.name;
+    
+    // Получаем правила генерации для порта
+    const rules = PORT_GENERATION_RULES[port.name];
+    
+    // Грузы, доступные для погрузки (генерируемые)
+    const loadableCargo = port.availableCargo.filter(cargo => 
+        rules && rules.generates === cargo.type
+    );
+    
+    // Грузы, которые требуются для генерации (можно выгрузить)
+    const requiredCargo = rules ? Object.keys(rules.requires) : [];
+    const requiredCargoInfo = requiredCargo.map(cargoType => {
+        const cargo = port.availableCargo.find(c => c.type === cargoType);
+        return {
+            type: cargoType,
+            amount: cargo ? cargo.amount : 0,
+            required: rules.requires[cargoType]
+        };
+    });
+    
     body.innerHTML = `
         <div class="port-info">
-            <h4>Доступные грузы:</h4>
-            ${port.availableCargo.map(cargo => `
-                <div class="cargo-option">
-                    ${getCargoName(cargo.type)} - ${cargo.amount} единиц
+            <div style="margin-bottom: 20px;">
+                <h4>📦 Грузы доступные для погрузки:</h4>
+                ${loadableCargo.length > 0 ? loadableCargo.map(cargo => `
+                    <div class="cargo-option" style="padding: 10px; margin: 5px 0; background: #e8f5e9; border-radius: 5px;">
+                        <strong>${getCargoName(cargo.type)}</strong> - ${cargo.amount} единиц
+                        ${cargo.price ? `<span style="color: #4caf50;">💰 ${cargo.price} монет/ед.</span>` : ''}
+                    </div>
+                `).join('') : '<div style="padding: 10px; color: #999;">Нет доступных грузов для погрузки</div>'}
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <h4>📤 Грузы требуются для генерации (можно выгрузить):</h4>
+                ${requiredCargoInfo.length > 0 ? requiredCargoInfo.map(cargo => `
+                    <div class="cargo-option" style="padding: 10px; margin: 5px 0; background: #fff3e0; border-radius: 5px;">
+                        <strong>${getCargoName(cargo.type)}</strong> - В порту: ${cargo.amount} единиц
+                        <span style="color: #ff9800;">(требуется: ${cargo.required} ед. для генерации)</span>
+                    </div>
+                `).join('') : '<div style="padding: 10px; color: #999;">Нет требуемых грузов</div>'}
+            </div>
+            
+            ${rules ? `
+                <div style="margin-top: 20px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
+                    <strong>ℹ️ Правила генерации:</strong>
+                    <p>${Object.entries(rules.requires).map(([type, amount]) => 
+                        `${amount} ${getCargoName(type)}`
+                    ).join(' + ')} → 3 ${getCargoName(rules.generates)}</p>
                 </div>
-            `).join('')}
+            ` : ''}
         </div>
     `;
 
@@ -800,6 +842,22 @@ function getCargoName(type) {
     };
     return names[type] || type;
 }
+
+// Правила генерации ресурсов для каждого порта
+const PORT_GENERATION_RULES = {
+    'Порт Владивосток': {
+        generates: 'oil',  // Генерирует нефть
+        requires: { materials: 1, provisions: 1 }  // Требует материалы и провизию
+    },
+    'Порт Новороссийск': {
+        generates: 'provisions',  // Генерирует провизию
+        requires: { materials: 1, oil: 1 }  // Требует материалы и нефть
+    },
+    'Порт Санкт-Петербург': {
+        generates: 'materials',  // Генерирует материалы
+        requires: { oil: 1, provisions: 1 }  // Требует нефть и провизию
+    }
+};
 
 function getPortName(portId) {
     const port = ports.find(p => p.id === portId);
