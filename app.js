@@ -572,6 +572,7 @@ async function selectCargo(shipId, cargoType, amount) {
         if (data.success) {
             showSuccess('Груз загружен!');
             await loadUserData();
+            await loadPorts();
             updateUI();
             openShipModal(shipId);
         }
@@ -610,6 +611,7 @@ async function unloadCargo(shipId) {
             
             showSuccess(message);
             await loadUserData();
+            await loadPorts();
             updateUI();
             openShipModal(shipId);
         }
