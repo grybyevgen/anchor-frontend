@@ -493,6 +493,48 @@ async function openShipModal(shipId) {
                 `;
             })() : ''}
             
+            ${ship.fuel < 5 && !ship.isTraveling ? (() => {
+                // Проверяем, не во Владивостоке ли судно
+                const port = ports.find(p => p.id === ship.currentPortId);
+                const isInVladivostok = port && port.name === 'Порт Владивосток';
+                
+                if (isInVladivostok) {
+                    return `
+                        <div style="margin: 15px 0; padding: 10px; background: #ffebee; border-radius: 5px;">
+                            <h4>⚠️ Низкий уровень топлива</h4>
+                            <p style="color: #d32f2f;">Топливо на исходе (${ship.fuel}/${ship.maxFuel}). Заправьте судно нефтью в порту Владивосток.</p>
+                        </div>
+                    `;
+                }
+                
+                // Рассчитываем примерную стоимость буксировки
+                const vladivostokPort = ports.find(p => p.name === 'Порт Владивосток');
+                if (!vladivostokPort) return '';
+                
+                // Простая оценка расстояния (будет уточнена на сервере)
+                const estimatedCost = 500 + 1000; // Базовая + примерная доплата за расстояние
+                
+                return `
+                    <div style="margin: 15px 0; padding: 10px; background: #fff3e0; border-radius: 5px; border: 2px solid #ff9800;">
+                        <h4>🚢 Буксировка судна</h4>
+                        <p style="color: #f57c00; margin-bottom: 10px;">
+                            <strong>Топливо на исходе!</strong> (${ship.fuel}/${ship.maxFuel})
+                        </p>
+                        <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
+                            Судно можно отбуксировать в порт Владивосток для заправки.
+                        </p>
+                        <p style="font-size: 0.9em; color: #666; margin-bottom: 15px;">
+                            Примерная стоимость: <strong>💰 ~${estimatedCost}</strong> монет (точная стоимость будет рассчитана на сервере)
+                        </p>
+                        <button class="btn-primary" 
+                                style="background: #ff9800; border-color: #f57c00;"
+                                onclick="confirmTowShip('${ship.id}', '${port ? port.name : 'неизвестный порт'}', ${estimatedCost})">
+                            Отбуксировать во Владивосток
+                        </button>
+                    </div>
+                `;
+            })() : ''}
+            
             ${ship.health < ship.maxHealth ? `
                 <button class="btn-secondary" onclick="repairShip('${ship.id}')">Починить судно</button>
             ` : ''}
@@ -762,6 +804,55 @@ async function refuelShipFromPort(shipId, amount) {
         
         if (data.success) {
             showSuccess(`Судно заправлено на ${data.fueled} единиц! Стоимость: 💰 ${data.cost}`);
+            await loadUserData();
+            await loadPorts(false);
+            updateUI();
+            openShipModal(shipId);
+        }
+    } catch (error) {
+        // Ошибка уже обработана в apiRequest
+    }
+}
+
+// Подтверждение буксировки судна
+async function confirmTowShip(shipId, currentPortName, estimatedCost) {
+    const ship = ships.find(s => s.id === shipId);
+    if (!ship) return;
+    
+    const user = users.find(u => u.id === ship.userId);
+    if (!user) return;
+    
+    if (user.coins < estimatedCost) {
+        showError(`Недостаточно монет. Требуется примерно 💰 ${estimatedCost}, доступно: 💰 ${user.coins}`);
+        return;
+    }
+    
+    const confirmed = confirm(
+        `Отбуксировать судно "${ship.name}" из порта "${currentPortName}" в порт Владивосток?\n\n` +
+        `Примерная стоимость: 💰 ${estimatedCost} монет\n\n` +
+        `После буксировки судно окажется во Владивостоке с нулевым топливом. ` +
+        `Вам нужно будет заправить судно нефтью для продолжения работы.`
+    );
+    
+    if (!confirmed) return;
+    
+    await towShip(shipId);
+}
+
+// Функция буксировки судна
+async function towShip(shipId) {
+    try {
+        const data = await apiRequest(`${API_URL}/ships/${shipId}/tow`, {
+            method: 'POST'
+        });
+        
+        if (data.success) {
+            showSuccess(
+                `Судно отбуксировано в порт Владивосток!\n` +
+                `Стоимость: 💰 ${data.cost} монет\n` +
+                `Расстояние: ${data.distance.toFixed(1)} миль\n\n` +
+                `${data.message || 'Заправьте судно нефтью для продолжения работы.'}`
+            );
             await loadUserData();
             await loadPorts(false);
             updateUI();
