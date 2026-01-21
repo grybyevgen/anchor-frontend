@@ -293,6 +293,9 @@ function updateUI() {
     
     // Обновляем список портов
     renderPorts();
+
+    // Обновляем статистику флота
+    renderFleetStats();
 }
 
 function renderShips() {
@@ -346,6 +349,72 @@ function renderPorts() {
             </div>
         </div>
     `).join('');
+}
+
+// Статистика во вкладке "Флот"
+function renderFleetStats() {
+    const fleetStatsEl = document.getElementById('fleet-stats');
+    if (!fleetStatsEl) return;
+
+    if (!ships || ships.length === 0) {
+        fleetStatsEl.innerHTML = '<div class="loading">У вас пока нет судов. Купите первое судно, чтобы видеть статистику.</div>';
+        return;
+    }
+
+    // Считаем суммарные показатели по флоту
+    let totalDistance = 0;
+    let totalProfit = 0;
+    let totalFuelCost = 0;
+    let totalCargoMoved = 0;
+    let totalShipCosts = 0;
+
+    const cardsHtml = ships.map(ship => {
+        const purchasePrice = ship.purchasePrice || 0;
+        const totalDistanceNm = ship.totalDistanceNm || 0;
+        const totalTrips = ship.totalTrips || 0;
+        const totalCargoMovedShip = ship.totalCargoMoved || 0;
+        const totalProfitShip = ship.totalProfit || 0;
+        const totalFuelCostShip = ship.totalFuelCost || 0;
+        const totalCargoCostShip = ship.totalCargoCost || 0;
+        const totalRepairCostShip = ship.totalRepairCost || 0;
+        const totalTowCostShip = ship.totalTowCost || 0;
+
+        const totalCostsShip = purchasePrice + totalFuelCostShip + totalCargoCostShip + totalRepairCostShip + totalTowCostShip;
+
+        totalDistance += totalDistanceNm;
+        totalProfit += totalProfitShip;
+        totalFuelCost += totalFuelCostShip;
+        totalCargoMoved += totalCargoMovedShip;
+        totalShipCosts += totalCostsShip;
+
+        return `
+            <div class="fleet-card">
+                <h3>${ship.name} (${getShipTypeName(ship.type)})</h3>
+                <div class="stat-row"><span>Текущий порт:</span><span>${getPortName(ship.currentPortId)}</span></div>
+                <div class="stat-row"><span>Пройдено миль:</span><span>${totalDistanceNm}</span></div>
+                <div class="stat-row"><span>Рейсов совершено:</span><span>${totalTrips}</span></div>
+                <div class="stat-row"><span>Перевезено груза (ед.):</span><span>${totalCargoMovedShip}</span></div>
+                <div class="stat-row"><span>Доход от рейсов (чистая прибыль):</span><span>💰 ${totalProfitShip}</span></div>
+                <div class="stat-row"><span>Потрачено на топливо:</span><span>💰 ${totalFuelCostShip}</span></div>
+                <div class="stat-row"><span>Потрачено на ремонт:</span><span>💰 ${totalRepairCostShip}</span></div>
+                <div class="stat-row"><span>Потрачено на буксировку:</span><span>💰 ${totalTowCostShip}</span></div>
+                <div class="stat-row"><span>Покупка + все расходы:</span><span>💰 ${totalCostsShip}</span></div>
+            </div>
+        `;
+    }).join('');
+
+    const summaryHtml = `
+        <div class="fleet-summary">
+            <div><strong>Всего судов:</strong> ${ships.length}</div>
+            <div><strong>Суммарное расстояние:</strong> ${totalDistance} миль</div>
+            <div><strong>Суммарно перевезено груза:</strong> ${totalCargoMoved} ед.</div>
+            <div><strong>Суммарные расходы на топливо:</strong> 💰 ${totalFuelCost}</div>
+            <div><strong>Суммарная чистая прибыль от рейсов:</strong> 💰 ${totalProfit}</div>
+            <div><strong>Суммарные затраты на суда (покупка+расходы):</strong> 💰 ${totalShipCosts}</div>
+        </div>
+    `;
+
+    fleetStatsEl.innerHTML = summaryHtml + cardsHtml;
 }
 
 
