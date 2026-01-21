@@ -128,23 +128,41 @@ function setLoading(loading) {
     }
 }
 
-// Показать ошибку
+// Показать ошибку (кастомное уведомление без подписи домена)
 function showError(message) {
-    // Можно использовать Telegram Web App API для показа уведомлений
-    if (window.TelegramWebApp && window.TelegramWebApp.showAlert) {
-        window.TelegramWebApp.showAlert(message);
-    } else {
-        alert(message);
-    }
+    showToast(message, 'error');
 }
 
-// Показать успешное сообщение
+// Показать успешное сообщение (кастомное уведомление без подписи домена)
 function showSuccess(message) {
-    if (window.TelegramWebApp && window.TelegramWebApp.showAlert) {
-        window.TelegramWebApp.showAlert(message);
-    } else {
-        alert(message);
+    showToast(message, 'success');
+}
+
+// Показать кастомное toast-уведомление
+function showToast(message, type = 'success') {
+    // Удаляем предыдущее уведомление, если есть
+    const existingToast = document.querySelector('.toast');
+    if (existingToast) {
+        existingToast.remove();
     }
+    
+    // Создаем новое уведомление
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    
+    // Добавляем в DOM
+    document.body.appendChild(toast);
+    
+    // Автоматически удаляем через 3 секунды
+    setTimeout(() => {
+        toast.style.animation = 'slideUp 0.3s ease-out';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 300);
+    }, 3000);
 }
 
 async function initUser(showLoading = true) {
