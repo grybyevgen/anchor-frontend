@@ -581,21 +581,21 @@ async function openShipModal(shipId) {
             })() : ''}
             
             ${ship.fuel < 5 && !ship.isTraveling ? (() => {
-                // Проверяем, не во Владивостоке ли судно
+                // Проверяем, не в порту "Нефтяной завод" ли судно
                 const port = ports.find(p => p.id === ship.currentPortId);
-                const isInVladivostok = port && port.name === 'Порт Владивосток';
+                const isInVladivostok = port && port.name === 'Порт "Нефтяной завод"';
                 
                 if (isInVladivostok) {
                     return `
                         <div style="margin: 15px 0; padding: 10px; background: #ffebee; border-radius: 5px;">
                             <h4>⚠️ Низкий уровень топлива</h4>
-                            <p style="color: #d32f2f;">Топливо на исходе (${ship.fuel}/${ship.maxFuel}). Заправьте судно нефтью в порту Владивосток.</p>
+                            <p style="color: #d32f2f;">Топливо на исходе (${ship.fuel}/${ship.maxFuel}). Заправьте судно нефтью в порту "Нефтяной завод".</p>
                         </div>
                     `;
                 }
                 
                 // Рассчитываем примерную стоимость буксировки
-                const vladivostokPort = ports.find(p => p.name === 'Порт Владивосток');
+                const vladivostokPort = ports.find(p => p.name === 'Порт "Нефтяной завод"');
                 if (!vladivostokPort) return '';
                 
                 // Простая оценка расстояния (будет уточнена на сервере)
@@ -608,7 +608,7 @@ async function openShipModal(shipId) {
                             <strong>Топливо на исходе!</strong> (${ship.fuel}/${ship.maxFuel})
                         </p>
                         <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
-                            Судно можно отбуксировать в порт Владивосток для заправки.
+                            Судно можно отбуксировать в порт "Нефтяной завод" для заправки.
                         </p>
                         <p style="font-size: 0.9em; color: #666; margin-bottom: 15px;">
                             Примерная стоимость: <strong>💰 ~${estimatedCost}</strong> монет (точная стоимость будет рассчитана на сервере)
@@ -616,7 +616,7 @@ async function openShipModal(shipId) {
                         <button class="btn-primary" 
                                 style="background: #ff9800; border-color: #f57c00;"
                                 onclick="confirmTowShip('${ship.id}', '${port ? port.name : 'неизвестный порт'}', ${estimatedCost})">
-                            Отбуксировать во Владивосток
+                            Отбуксировать в "Нефтяной завод"
                         </button>
                     </div>
                 `;
@@ -722,7 +722,7 @@ async function confirmSendShipToPort(shipId, portId, portName) {
         }
     } catch (error) {
         // Ошибка уже обработана в apiRequest
-        // Если не хватает топлива - предлагаем буксировку во Владивосток
+        // Если не хватает топлива - предлагаем буксировку в порт "Нефтяной завод"
         if (error && error.message && error.message.startsWith('Недостаточно топлива')) {
             const ship = ships.find(s => s.id === shipId);
             const currentPort = ports.find(p => p.id === ship.currentPortId);
@@ -925,9 +925,9 @@ async function confirmTowShip(shipId, currentPortName, estimatedCost) {
     }
     
     const confirmed = confirm(
-        `Отбуксировать судно "${ship.name}" из порта "${currentPortName}" в порт Владивосток?\n\n` +
+        `Отбуксировать судно "${ship.name}" из порта "${currentPortName}" в порт "Нефтяной завод"?\n\n` +
         `Примерная стоимость: 💰 ${estimatedCost} монет\n\n` +
-        `После буксировки судно окажется во Владивостоке с нулевым топливом. ` +
+        `После буксировки судно окажется в порту "Нефтяной завод" с нулевым топливом. ` +
         `Вам нужно будет заправить судно нефтью для продолжения работы.`
     );
     
@@ -945,7 +945,7 @@ async function towShip(shipId) {
         
         if (data.success) {
             showSuccess(
-                `Судно отбуксировано в порт Владивосток!\n` +
+                `Судно отбуксировано в порт "Нефтяной завод"!\n` +
                 `Стоимость: 💰 ${data.cost} монет\n` +
                 `Расстояние: ${data.distance.toFixed(1)} миль\n\n` +
                 `${data.message || 'Заправьте судно нефтью для продолжения работы.'}`
