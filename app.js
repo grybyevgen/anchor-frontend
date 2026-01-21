@@ -635,6 +635,16 @@ async function confirmSendShipToPort(shipId, portId, portName) {
         }
     } catch (error) {
         // Ошибка уже обработана в apiRequest
+        // Если не хватает топлива - предлагаем буксировку во Владивосток
+        if (error && error.message && error.message.startsWith('Недостаточно топлива')) {
+            const ship = ships.find(s => s.id === shipId);
+            const currentPort = ports.find(p => p.id === ship.currentPortId);
+            if (ship && currentPort) {
+                // Примерная оценка стоимости (точная будет рассчитана на сервере)
+                const estimatedCost = 500 + 1000; // базовая + примерная доплата
+                confirmTowShip(shipId, currentPort.name, estimatedCost);
+            }
+        }
     }
 }
 
