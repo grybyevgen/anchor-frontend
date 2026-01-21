@@ -828,12 +828,12 @@ async function refuelShipFromPort(shipId, amount) {
 async function confirmTowShip(shipId, currentPortName, estimatedCost) {
     const ship = ships.find(s => s.id === shipId);
     if (!ship) return;
+    if (!currentUser) return;
     
-    const user = users.find(u => u.id === ship.userId);
-    if (!user) return;
+    const userCoins = currentUser.coins || 0;
     
-    if (user.coins < estimatedCost) {
-        showError(`Недостаточно монет. Требуется примерно 💰 ${estimatedCost}, доступно: 💰 ${user.coins}`);
+    if (estimatedCost && userCoins < estimatedCost) {
+        showError(`Недостаточно монет. Требуется примерно 💰 ${estimatedCost}, доступно: 💰 ${userCoins}`);
         return;
     }
     
