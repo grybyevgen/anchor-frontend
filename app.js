@@ -1010,16 +1010,50 @@ async function confirmTowShip(shipId, currentPortName, estimatedCost) {
         return;
     }
     
-    const confirmed = confirm(
-        `Отбуксировать судно "${ship.name}" из порта "${currentPortName}" в порт "Нефтяной завод"?\n\n` +
-        `Примерная стоимость: 💰 ${estimatedCost} монет\n\n` +
-        `После буксировки судно окажется в порту "Нефтяной завод" с нулевым топливом. ` +
-        `Вам нужно будет заправить судно нефтью для продолжения работы.`
-    );
+    // Показываем кастомное модальное окно вместо confirm()
+    const modal = document.getElementById('confirm-tow-modal');
+    const body = document.getElementById('confirm-tow-body');
+    const cancelBtn = document.getElementById('confirm-tow-cancel');
+    const okBtn = document.getElementById('confirm-tow-ok');
     
-    if (!confirmed) return;
+    body.innerHTML = `
+        <p>Отбуксировать судно <strong>"${ship.name}"</strong> из порта <strong>"${currentPortName}"</strong> в порт <strong>"Нефтяной завод"</strong>?</p>
+        <p style="margin-top: 15px;">Примерная стоимость: <strong>💰 ${estimatedCost}</strong> монет</p>
+        <p style="margin-top: 10px; color: #666; font-size: 0.9em;">После буксировки судно окажется в порту "Нефтяной завод" с нулевым топливом. Вам нужно будет заправить судно нефтью для продолжения работы.</p>
+    `;
     
-    await towShip(shipId);
+    modal.style.display = 'block';
+    
+    // Обработчики событий
+    const handleConfirm = async () => {
+        modal.style.display = 'none';
+        cancelBtn.removeEventListener('click', handleCancel);
+        okBtn.removeEventListener('click', handleConfirm);
+        await towShip(shipId);
+    };
+    
+    const handleCancel = () => {
+        modal.style.display = 'none';
+        cancelBtn.removeEventListener('click', handleCancel);
+        okBtn.removeEventListener('click', handleConfirm);
+    };
+    
+    // Удаляем старые обработчики и добавляем новые
+    cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+    okBtn.replaceWith(okBtn.cloneNode(true));
+    
+    const newCancelBtn = document.getElementById('confirm-tow-cancel');
+    const newOkBtn = document.getElementById('confirm-tow-ok');
+    
+    newCancelBtn.addEventListener('click', handleCancel);
+    newOkBtn.addEventListener('click', handleConfirm);
+    
+    // Закрытие по клику вне модального окна
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            handleCancel();
+        }
+    });
 }
 
 // Функция буксировки судна

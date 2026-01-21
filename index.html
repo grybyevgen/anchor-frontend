@@ -76,6 +76,18 @@
             <div class="loading-spinner"></div>
             <p>Загрузка...</p>
         </div>
+
+        <!-- Модальное окно подтверждения буксировки -->
+        <div id="confirm-tow-modal" class="modal" style="display: none;">
+            <div class="modal-content" style="max-width: 400px;">
+                <h2>🚢 Буксировка судна</h2>
+                <div id="confirm-tow-body" style="margin: 20px 0;"></div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button id="confirm-tow-cancel" class="btn-secondary" style="padding: 10px 20px;">Отмена</button>
+                    <button id="confirm-tow-ok" class="btn-primary" style="padding: 10px 20px;">Подтвердить</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="telegram-web-app.js"></script>
