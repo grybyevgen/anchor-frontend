@@ -475,36 +475,53 @@ async function openShipModal(shipId) {
                     <h4>Текущий груз: ${getCargoName(ship.cargo.type)} (${ship.cargo.amount})</h4>
                     <button class="btn-primary" onclick="unloadCargo('${ship.id}')">Выгрузить груз в порт</button>
                 </div>
-            ` : `
-                <div style="margin: 15px 0;">
-                    <h4>Загрузить груз:</h4>
-                    <div class="cargo-selector">
-                        ${getAvailableCargoForPort(ship.currentPortId).map(cargo => {
-                            const maxAvailable = Math.min(cargo.amount, 100); // Максимум 100 единиц или доступное количество
-                            return `
-                                <div class="cargo-option" style="margin-bottom: 10px;">
-                                    <div><strong>${getCargoName(cargo.type)}</strong> - Доступно: ${cargo.amount} - 💰 ${cargo.price || 'Бесплатно'}/ед.</div>
-                                    <div style="display: flex; gap: 10px; margin-top: 5px; align-items: center;">
-                                        <input type="number" 
-                                               id="cargo-amount-${cargo.type}-${ship.id}" 
-                                               min="1" 
-                                               max="${maxAvailable}" 
-                                               value="${maxAvailable > 0 ? 1 : 0}" 
-                                               style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;"
-                                               ${maxAvailable === 0 ? 'disabled' : ''}>
-                                        <span>шт. (макс. ${maxAvailable})</span>
-                                        <button class="btn-primary" 
-                                                onclick="confirmLoadCargo('${ship.id}', '${cargo.type}', ${cargo.amount}, ${cargo.price || 0})"
-                                                ${maxAvailable === 0 ? 'disabled' : ''}>
-                                            Загрузить
-                                        </button>
+            ` : (() => {
+                // Получаем порт и правила генерации
+                const port = ports.find(p => p.id === ship.currentPortId);
+                if (!port) return '';
+                
+                const rules = PORT_GENERATION_RULES[port.name];
+                if (!rules) return '';
+                
+                // Фильтруем только грузы, которые порт генерирует (можно загрузить)
+                const loadableCargo = getAvailableCargoForPort(ship.currentPortId).filter(cargo => 
+                    rules.generates === cargo.type
+                );
+                
+                // Если нет грузов для погрузки, не показываем секцию
+                if (loadableCargo.length === 0) return '';
+                
+                return `
+                    <div style="margin: 15px 0;">
+                        <h4>Загрузить груз:</h4>
+                        <div class="cargo-selector">
+                            ${loadableCargo.map(cargo => {
+                                const maxAvailable = Math.min(cargo.amount, 100); // Максимум 100 единиц или доступное количество
+                                return `
+                                    <div class="cargo-option" style="margin-bottom: 10px;">
+                                        <div><strong>${getCargoName(cargo.type)}</strong> - Доступно: ${cargo.amount} - 💰 ${cargo.price || 'Бесплатно'}/ед.</div>
+                                        <div style="display: flex; gap: 10px; margin-top: 5px; align-items: center;">
+                                            <input type="number" 
+                                                   id="cargo-amount-${cargo.type}-${ship.id}" 
+                                                   min="1" 
+                                                   max="${maxAvailable}" 
+                                                   value="${maxAvailable > 0 ? 1 : 0}" 
+                                                   style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;"
+                                                   ${maxAvailable === 0 ? 'disabled' : ''}>
+                                            <span>шт. (макс. ${maxAvailable})</span>
+                                            <button class="btn-primary" 
+                                                    onclick="confirmLoadCargo('${ship.id}', '${cargo.type}', ${cargo.amount}, ${cargo.price || 0})"
+                                                    ${maxAvailable === 0 ? 'disabled' : ''}>
+                                                Загрузить
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                            `;
-                        }).join('')}
+                                `;
+                            }).join('')}
+                        </div>
                     </div>
-                </div>
-            `}
+                `;
+            })()}
             
             <div style="margin: 15px 0;">
                 <h4>Отправить в порт:</h4>
