@@ -635,7 +635,10 @@ async function openShipModal(shipId) {
                         </p>
                         <button class="btn-primary" 
                                 style="background: #ff9800; border-color: #f57c00;"
-                                onclick="confirmTowShip('${ship.id}', '${port ? port.name : 'неизвестный порт'}', ${estimatedCost})">
+                                data-ship-id="${ship.id}" 
+                                data-port-name="${port ? port.name.replace(/"/g, '&quot;') : 'неизвестный порт'}" 
+                                data-estimated-cost="${estimatedCost}"
+                                id="tow-ship-btn-${ship.id}">
                             Отбуксировать в "Нефтяной завод"
                         </button>
                     </div>
@@ -665,6 +668,19 @@ async function openShipModal(shipId) {
             const portOptions = portSelector.querySelectorAll('.port-option');
             portOptions.forEach(option => {
                 option.addEventListener('click', handlePortOptionClick);
+            });
+        }
+        
+        // Добавляем обработчик для кнопки буксировки
+        const towButton = document.getElementById(`tow-ship-btn-${ship.id}`);
+        if (towButton) {
+            towButton.addEventListener('click', () => {
+                const shipId = towButton.getAttribute('data-ship-id');
+                const portName = towButton.getAttribute('data-port-name');
+                const estimatedCost = parseInt(towButton.getAttribute('data-estimated-cost') || '0');
+                if (shipId && portName) {
+                    confirmTowShip(shipId, portName, estimatedCost);
+                }
             });
         }
     }, 0);
@@ -1165,3 +1181,5 @@ window.confirmRefuelFromPort = confirmRefuelFromPort;
 window.updateRefuelPriceFromPort = updateRefuelPriceFromPort;
 window.purchaseShip = purchaseShip;
 window.showBuyShipModal = showBuyShipModal;
+window.confirmTowShip = confirmTowShip;
+window.towShip = towShip;
