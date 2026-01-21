@@ -508,9 +508,12 @@ async function openShipModal(shipId) {
             
             <div style="margin: 15px 0;">
                 <h4>Отправить в порт:</h4>
-                <div class="port-selector">
+                <div class="port-selector" id="port-selector-${ship.id}">
                     ${ports.filter(p => p.id !== ship.currentPortId).map(port => `
-                        <div class="port-option" onclick="confirmSendShipToPort('${ship.id}', '${port.id}', '${port.name}')">
+                        <div class="port-option" 
+                             data-ship-id="${ship.id}" 
+                             data-port-id="${port.id}" 
+                             data-port-name="${port.name.replace(/"/g, '&quot;')}">
                             ${port.name} (💰 ${calculateTravelCost(ship, port)} - рассчитывается при отправке)
                         </div>
                     `).join('')}
@@ -629,6 +632,25 @@ async function openShipModal(shipId) {
     }
 
     modal.style.display = 'block';
+    
+    // Добавляем обработчики событий для кнопок отправки в порт (через небольшую задержку, чтобы DOM успел обновиться)
+    setTimeout(() => {
+        const portSelector = document.getElementById(`port-selector-${ship.id}`);
+        if (portSelector) {
+            // Удаляем старые обработчики (если есть) - клонируем элементы для удаления обработчиков
+            const oldOptions = portSelector.querySelectorAll('.port-option');
+            oldOptions.forEach(option => {
+                const newOption = option.cloneNode(true);
+                option.parentNode.replaceChild(newOption, option);
+            });
+            
+            // Добавляем новые обработчики
+            const portOptions = portSelector.querySelectorAll('.port-option');
+            portOptions.forEach(option => {
+                option.addEventListener('click', handlePortOptionClick);
+            });
+        }
+    }, 0);
 }
 
 async function openPortModal(portId) {
@@ -694,6 +716,37 @@ async function openPortModal(portId) {
     `;
 
     modal.style.display = 'block';
+    
+    // Добавляем обработчики событий для кнопок отправки в порт (через небольшую задержку, чтобы DOM успел обновиться)
+    setTimeout(() => {
+        const portSelector = document.getElementById(`port-selector-${ship.id}`);
+        if (portSelector) {
+            // Удаляем старые обработчики (если есть)
+            const oldOptions = portSelector.querySelectorAll('.port-option');
+            oldOptions.forEach(option => {
+                const newOption = option.cloneNode(true);
+                option.parentNode.replaceChild(newOption, option);
+            });
+            
+            // Добавляем новые обработчики
+            const portOptions = portSelector.querySelectorAll('.port-option');
+            portOptions.forEach(option => {
+                option.addEventListener('click', handlePortOptionClick);
+            });
+        }
+    }, 0);
+}
+
+// Обработчик клика по опции порта
+function handlePortOptionClick(event) {
+    const option = event.currentTarget;
+    const shipId = option.getAttribute('data-ship-id');
+    const portId = option.getAttribute('data-port-id');
+    const portName = option.getAttribute('data-port-name');
+    
+    if (shipId && portId && portName) {
+        confirmSendShipToPort(shipId, portId, portName);
+    }
 }
 
 async function confirmSendShipToPort(shipId, portId, portName) {
