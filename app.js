@@ -2376,7 +2376,37 @@ async function showBuyShipModal() {
     modal.classList.add('active');
     
     try {
-        const userId = currentUser.userId || currentUser.id;
+        // Получаем userId из разных источников
+        let userId = currentUser?.userId || currentUser?.id;
+        
+        // Если userId еще не загружен, пытаемся загрузить данные пользователя
+        if (!userId) {
+            // Пытаемся использовать telegramId из window.TelegramWebApp
+            userId = window.TelegramWebApp?.userId;
+            
+            if (!userId) {
+                showError('Не удалось определить ID пользователя. Попробуйте обновить страницу.');
+                body.innerHTML = '<div class="loading">Ошибка: не удалось определить ID пользователя. Попробуйте обновить страницу.</div>';
+                return;
+            }
+            
+            // Если есть только telegramId, но нет UUID, загружаем данные пользователя
+            if (!currentUser?.userId && userId) {
+                try {
+                    await loadUserData(false);
+                    userId = currentUser?.userId || currentUser?.id;
+                } catch (e) {
+                    console.error('Ошибка загрузки данных пользователя:', e);
+                }
+            }
+        }
+        
+        // Финальная проверка
+        if (!userId || userId === 'null' || userId === 'undefined') {
+            showError('Не удалось определить ID пользователя. Попробуйте обновить страницу.');
+            body.innerHTML = '<div class="loading">Ошибка: не удалось определить ID пользователя. Попробуйте обновить страницу.</div>';
+            return;
+        }
         
         // Запрашиваем актуальные цены с сервера
         const pricePromises = shipTypes.map(st => 
@@ -2469,8 +2499,34 @@ async function showBuyShipModal() {
 
 async function purchaseShip(shipType) {
     try {
-        // Используем userId (UUID) если он есть, иначе используем telegramId
-        const userId = currentUser.userId || currentUser.id;
+        // Получаем userId из разных источников
+        let userId = currentUser?.userId || currentUser?.id;
+        
+        // Если userId еще не загружен, пытаемся загрузить данные пользователя
+        if (!userId) {
+            userId = window.TelegramWebApp?.userId;
+            
+            if (!userId) {
+                showError('Не удалось определить ID пользователя. Попробуйте обновить страницу.');
+                return;
+            }
+            
+            // Если есть только telegramId, но нет UUID, загружаем данные пользователя
+            if (!currentUser?.userId && userId) {
+                try {
+                    await loadUserData(false);
+                    userId = currentUser?.userId || currentUser?.id;
+                } catch (e) {
+                    console.error('Ошибка загрузки данных пользователя:', e);
+                }
+            }
+        }
+        
+        // Финальная проверка
+        if (!userId || userId === 'null' || userId === 'undefined') {
+            showError('Не удалось определить ID пользователя. Попробуйте обновить страницу.');
+            return;
+        }
         
         const data = await apiRequest(`${API_URL}/ships/buy`, {
             method: 'POST',
