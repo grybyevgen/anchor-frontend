@@ -11,6 +11,13 @@ let autoRefreshInterval = null;
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', () => {
+    // Проверяем загрузку иконок
+    setTimeout(() => {
+        if (!window.ShipIcons || !window.CargoIcons || !window.FactoryIcons) {
+            console.warn('Иконки не загружены, используем fallback');
+        }
+    }, 100);
+    
     initApp();
     setupEventListeners();
 });
@@ -258,7 +265,6 @@ function setupEventListeners() {
         close.addEventListener('click', () => {
             document.querySelectorAll('.modal').forEach(modal => {
                 modal.classList.remove('active');
-                modal.style.display = 'none';
             });
         });
     });
@@ -268,7 +274,6 @@ function setupEventListeners() {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 modal.classList.remove('active');
-                modal.style.display = 'none';
             }
         });
     });
@@ -360,12 +365,17 @@ function renderShips() {
         let shipIcon = '';
         
         // Получаем иконку судна
-        if (ship.type === 'tanker' && window.ShipIcons) {
-            shipIcon = window.ShipIcons.getTankerIcon(56);
-        } else if (ship.type === 'cargo' && window.ShipIcons) {
-            shipIcon = window.ShipIcons.getCargoShipIcon(56);
-        } else if (ship.type === 'supply' && window.ShipIcons) {
-            shipIcon = window.ShipIcons.getSupplyShipIcon(56);
+        try {
+            if (ship.type === 'tanker' && window.ShipIcons && window.ShipIcons.getTankerIcon) {
+                shipIcon = window.ShipIcons.getTankerIcon(56);
+            } else if (ship.type === 'cargo' && window.ShipIcons && window.ShipIcons.getCargoShipIcon) {
+                shipIcon = window.ShipIcons.getCargoShipIcon(56);
+            } else if (ship.type === 'supply' && window.ShipIcons && window.ShipIcons.getSupplyShipIcon) {
+                shipIcon = window.ShipIcons.getSupplyShipIcon(56);
+            }
+        } catch (e) {
+            console.error('Ошибка загрузки иконки судна:', e);
+            shipIcon = '🚢';
         }
         
         // Определяем цвет прогресс-бара для топлива
@@ -384,12 +394,17 @@ function renderShips() {
         let cargoIcon = '';
         if (ship.cargo) {
             const cargoType = ship.cargo.type;
-            if (cargoType === 'oil' && window.CargoIcons) {
-                cargoIcon = window.CargoIcons.getOilIcon(32);
-            } else if (cargoType === 'materials' && window.CargoIcons) {
-                cargoIcon = window.CargoIcons.getMaterialsIcon(32);
-            } else if (cargoType === 'provisions' && window.CargoIcons) {
-                cargoIcon = window.CargoIcons.getProvisionIcon(32);
+            try {
+                if (cargoType === 'oil' && window.CargoIcons && window.CargoIcons.getOilIcon) {
+                    cargoIcon = window.CargoIcons.getOilIcon(32);
+                } else if (cargoType === 'materials' && window.CargoIcons && window.CargoIcons.getMaterialsIcon) {
+                    cargoIcon = window.CargoIcons.getMaterialsIcon(32);
+                } else if (cargoType === 'provisions' && window.CargoIcons && window.CargoIcons.getProvisionIcon) {
+                    cargoIcon = window.CargoIcons.getProvisionIcon(32);
+                }
+            } catch (e) {
+                console.error('Ошибка загрузки иконки груза:', e);
+                cargoIcon = '📦';
             }
         }
         
@@ -463,12 +478,17 @@ function renderPorts() {
     portsList.innerHTML = ports.map(port => {
         // Получаем иконку завода
         let factoryIcon = '';
-        if (port.name.includes('Нефтяной') && window.FactoryIcons) {
-            factoryIcon = window.FactoryIcons.getOilFactoryIcon(80);
-        } else if (port.name.includes('Провизионный') && window.FactoryIcons) {
-            factoryIcon = window.FactoryIcons.getProvisionFactoryIcon(80);
-        } else if (port.name.includes('Материалов') && window.FactoryIcons) {
-            factoryIcon = window.FactoryIcons.getMaterialFactoryIcon(80);
+        try {
+            if (port.name.includes('Нефтяной') && window.FactoryIcons && window.FactoryIcons.getOilFactoryIcon) {
+                factoryIcon = window.FactoryIcons.getOilFactoryIcon(80);
+            } else if (port.name.includes('Провизионный') && window.FactoryIcons && window.FactoryIcons.getProvisionFactoryIcon) {
+                factoryIcon = window.FactoryIcons.getProvisionFactoryIcon(80);
+            } else if (port.name.includes('Материалов') && window.FactoryIcons && window.FactoryIcons.getMaterialFactoryIcon) {
+                factoryIcon = window.FactoryIcons.getMaterialFactoryIcon(80);
+            }
+        } catch (e) {
+            console.error('Ошибка загрузки иконки завода:', e);
+            factoryIcon = '🏭';
         }
         
         // Получаем правила генерации
@@ -484,14 +504,18 @@ function renderPorts() {
         
         // Функция для получения иконки груза
         const getCargoIconHTML = (cargoType) => {
-            if (cargoType === 'oil' && window.CargoIcons) {
-                return window.CargoIcons.getOilIcon(20);
-            } else if (cargoType === 'materials' && window.CargoIcons) {
-                return window.CargoIcons.getMaterialsIcon(20);
-            } else if (cargoType === 'provisions' && window.CargoIcons) {
-                return window.CargoIcons.getProvisionIcon(20);
+            try {
+                if (cargoType === 'oil' && window.CargoIcons && window.CargoIcons.getOilIcon) {
+                    return window.CargoIcons.getOilIcon(20);
+                } else if (cargoType === 'materials' && window.CargoIcons && window.CargoIcons.getMaterialsIcon) {
+                    return window.CargoIcons.getMaterialsIcon(20);
+                } else if (cargoType === 'provisions' && window.CargoIcons && window.CargoIcons.getProvisionIcon) {
+                    return window.CargoIcons.getProvisionIcon(20);
+                }
+            } catch (e) {
+                console.error('Ошибка загрузки иконки груза:', e);
             }
-            return '';
+            return '📦';
         };
         
         return `
@@ -598,12 +622,17 @@ function renderFleetStats() {
 
         // Получаем иконку судна
         let shipIcon = '';
-        if (ship.type === 'tanker' && window.ShipIcons) {
-            shipIcon = window.ShipIcons.getTankerIcon(48);
-        } else if (ship.type === 'cargo' && window.ShipIcons) {
-            shipIcon = window.ShipIcons.getCargoShipIcon(48);
-        } else if (ship.type === 'supply' && window.ShipIcons) {
-            shipIcon = window.ShipIcons.getSupplyShipIcon(48);
+        try {
+            if (ship.type === 'tanker' && window.ShipIcons && window.ShipIcons.getTankerIcon) {
+                shipIcon = window.ShipIcons.getTankerIcon(48);
+            } else if (ship.type === 'cargo' && window.ShipIcons && window.ShipIcons.getCargoShipIcon) {
+                shipIcon = window.ShipIcons.getCargoShipIcon(48);
+            } else if (ship.type === 'supply' && window.ShipIcons && window.ShipIcons.getSupplyShipIcon) {
+                shipIcon = window.ShipIcons.getSupplyShipIcon(48);
+            }
+        } catch (e) {
+            console.error('Ошибка загрузки иконки судна:', e);
+            shipIcon = '🚢';
         }
 
         return `
@@ -748,7 +777,6 @@ async function openShipModal(shipId) {
 
     title.textContent = ship.name;
     modal.classList.add('active');
-    modal.style.display = 'flex';
     
     if (ship.isTraveling) {
         const endTime = ship.travelEndTime ? new Date(ship.travelEndTime) : null;
@@ -1087,7 +1115,6 @@ function openRefuelModal(shipId) {
     // Создаем модальное окно для бункеровки
     const refuelModal = document.createElement('div');
     refuelModal.className = 'modal active';
-    refuelModal.style.display = 'flex';
     refuelModal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
@@ -1192,7 +1219,6 @@ async function openPortModal(portId) {
 
     title.textContent = port.name;
     modal.classList.add('active');
-    modal.style.display = 'flex';
     
     // Получаем правила генерации для порта
     const rules = PORT_GENERATION_RULES[port.name];
@@ -1378,7 +1404,6 @@ async function confirmSendShipToPort(shipId, portId, portName) {
             const shipModal = document.getElementById('ship-modal');
             if (shipModal) {
                 shipModal.classList.remove('active');
-                shipModal.style.display = 'none';
             }
         }
     } catch (error) {
@@ -1652,12 +1677,10 @@ async function confirmTowShip(shipId, currentPortName, estimatedCost) {
     `;
     
     modal.classList.add('active');
-    modal.style.display = 'flex';
     
     // Обработчики событий
     const handleConfirm = async () => {
         modal.classList.remove('active');
-        modal.style.display = 'none';
         cancelBtn.removeEventListener('click', handleCancel);
         okBtn.removeEventListener('click', handleConfirm);
         await towShip(shipId);
@@ -1665,7 +1688,6 @@ async function confirmTowShip(shipId, currentPortName, estimatedCost) {
     
     const handleCancel = () => {
         modal.classList.remove('active');
-        modal.style.display = 'none';
         cancelBtn.removeEventListener('click', handleCancel);
         okBtn.removeEventListener('click', handleConfirm);
     };
@@ -1729,7 +1751,6 @@ async function showBuyShipModal() {
     title.textContent = 'Купить судно';
     body.innerHTML = '<div class="loading">Загрузка цен...</div>';
     modal.classList.add('active');
-    modal.style.display = 'flex';
     
     try {
         const userId = currentUser.userId || currentUser.id;
@@ -1745,14 +1766,18 @@ async function showBuyShipModal() {
         
         // Функция для получения иконки судна
         const getShipIcon = (type) => {
-            if (type === 'tanker' && window.ShipIcons) {
-                return window.ShipIcons.getTankerIcon(64);
-            } else if (type === 'cargo' && window.ShipIcons) {
-                return window.ShipIcons.getCargoShipIcon(64);
-            } else if (type === 'supply' && window.ShipIcons) {
-                return window.ShipIcons.getSupplyShipIcon(64);
+            try {
+                if (type === 'tanker' && window.ShipIcons && window.ShipIcons.getTankerIcon) {
+                    return window.ShipIcons.getTankerIcon(64);
+                } else if (type === 'cargo' && window.ShipIcons && window.ShipIcons.getCargoShipIcon) {
+                    return window.ShipIcons.getCargoShipIcon(64);
+                } else if (type === 'supply' && window.ShipIcons && window.ShipIcons.getSupplyShipIcon) {
+                    return window.ShipIcons.getSupplyShipIcon(64);
+                }
+            } catch (e) {
+                console.error('Ошибка загрузки иконки судна:', e);
             }
-            return '';
+            return '🚢';
         };
         
         body.innerHTML = `
@@ -1836,7 +1861,6 @@ async function purchaseShip(shipType) {
             const shipModal = document.getElementById('ship-modal');
             if (shipModal) {
                 shipModal.classList.remove('active');
-                shipModal.style.display = 'none';
             }
         }
     } catch (error) {
@@ -1896,9 +1920,19 @@ function selectCargoForLoading(shipId, cargoType, maxAvailable, pricePerUnit, ma
     const cargoSection = modalBody.querySelector('.cargo-selection-list')?.closest('.modal-section');
     if (!cargoSection) return;
     
-    const cargoIcon = cargoType === 'oil' ? (window.CargoIcons ? window.CargoIcons.getOilIcon(24) : '') :
-                     cargoType === 'materials' ? (window.CargoIcons ? window.CargoIcons.getMaterialsIcon(24) : '') :
-                     cargoType === 'provisions' ? (window.CargoIcons ? window.CargoIcons.getProvisionIcon(24) : '') : '';
+    let cargoIcon = '';
+    try {
+        if (cargoType === 'oil' && window.CargoIcons && window.CargoIcons.getOilIcon) {
+            cargoIcon = window.CargoIcons.getOilIcon(24);
+        } else if (cargoType === 'materials' && window.CargoIcons && window.CargoIcons.getMaterialsIcon) {
+            cargoIcon = window.CargoIcons.getMaterialsIcon(24);
+        } else if (cargoType === 'provisions' && window.CargoIcons && window.CargoIcons.getProvisionIcon) {
+            cargoIcon = window.CargoIcons.getProvisionIcon(24);
+        }
+    } catch (e) {
+        console.error('Ошибка загрузки иконки груза:', e);
+        cargoIcon = '📦';
+    }
     
     const initialAmount = Math.min(10, maxAmount);
     const totalCost = initialAmount * pricePerUnit;
