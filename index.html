@@ -181,6 +181,73 @@
                 </div>
             </div>
         </div>
+
+        <!-- Модальное окно подтверждения отправки -->
+        <div id="confirm-send-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(to right, var(--blue-500), var(--cyan-600));">
+                    <div class="modal-header-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 2rem; height: 2rem;">
+                            <path d="M22 2L11 13"/>
+                            <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+                        </svg>
+                        <span>Подтверждение отправки</span>
+                    </div>
+                    <span class="modal-close" onclick="closeConfirmSendModal()">&times;</span>
+                </div>
+                <div class="modal-body" id="confirm-send-body"></div>
+            </div>
+        </div>
+
+        <!-- Модальное окно подтверждения загрузки -->
+        <div id="confirm-load-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(to right, var(--green-500), var(--emerald-600));">
+                    <div class="modal-header-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 2rem; height: 2rem;">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        </svg>
+                        <span>Подтверждение загрузки</span>
+                    </div>
+                    <span class="modal-close" onclick="closeConfirmLoadModal()">&times;</span>
+                </div>
+                <div class="modal-body" id="confirm-load-body"></div>
+            </div>
+        </div>
+
+        <!-- Модальное окно успешной выгрузки -->
+        <div id="unload-success-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(to right, var(--green-500), var(--emerald-600));">
+                    <div class="modal-header-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 2rem; height: 2rem;">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        </svg>
+                        <span>Груз успешно выгружен!</span>
+                    </div>
+                    <span class="modal-close" onclick="closeUnloadSuccessModal()">&times;</span>
+                </div>
+                <div class="modal-body" id="unload-success-body"></div>
+            </div>
+        </div>
+
+        <!-- Модальное окно ошибки выгрузки -->
+        <div id="unload-error-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(to right, var(--red-500), var(--orange-600));">
+                    <div class="modal-header-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 2rem; height: 2rem;">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <span>Невозможно выгрузить груз</span>
+                    </div>
+                    <span class="modal-close" onclick="closeUnloadErrorModal()">&times;</span>
+                </div>
+                <div class="modal-body" id="unload-error-body"></div>
+            </div>
+        </div>
     </div>
 
     <!-- Fixed Buy Ship Button -->

@@ -424,7 +424,7 @@ function renderShips() {
                 </div>
                 <div class="ship-card-body">
                     <div class="ship-location">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                             <circle cx="12" cy="10" r="3"/>
                         </svg>
@@ -432,7 +432,7 @@ function renderShips() {
                     </div>
                     <div class="progress-section">
                         <div class="progress-label">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
                                 <path d="M3 3h18v18H3zM12 8v8m-4-4h8"/>
                             </svg>
                             <span>Топливо</span>
@@ -444,7 +444,7 @@ function renderShips() {
                     </div>
                     <div class="progress-section">
                         <div class="progress-label">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
                                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                             </svg>
                             <span>Здоровье</span>
@@ -464,7 +464,7 @@ function renderShips() {
                             </div>
                         </div>
                     ` : ''}
-                    ${ship.isTraveling ? '<div style="margin-top: 0.5rem; padding: 0.5rem; background: #fff3e0; border-radius: 0.5rem; text-align: center; color: #f57c00;">⏳ В пути...</div>' : ''}
+                    ${ship.isTraveling ? '<div style="margin-top: 0.5rem; padding: 0.5rem; background: var(--orange-50); border-radius: var(--radius-lg); text-align: center; color: var(--orange-700); font-size: 0.875rem;">⏳ В пути...</div>' : ''}
                 </div>
             </div>
         `;
@@ -814,11 +814,11 @@ async function openShipModal(shipId) {
         
         body.innerHTML = `
             <div class="modal-section">
-                <div class="stat" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.5rem;">
                     <span style="color: var(--gray-600);">Тип судна:</span>
                     <span style="font-weight: 600; color: var(--gray-900);">${getShipTypeName(ship.type)}</span>
                 </div>
-                <div class="stat" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.5rem;">
                     <span style="color: var(--gray-600); display: flex; align-items: center; gap: 0.25rem;">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
@@ -828,7 +828,7 @@ async function openShipModal(shipId) {
                     </span>
                     <span style="font-weight: 600; color: var(--gray-900);">${getPortName(ship.currentPortId)}</span>
                 </div>
-                <div class="stat" style="display: flex; justify-content: space-between;">
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem;">
                     <span style="color: var(--gray-600); display: flex; align-items: center; gap: 0.25rem;">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -1375,20 +1375,204 @@ function handlePortOptionClick(event) {
     const portName = option.getAttribute('data-port-name');
     
     if (shipId && portId && portName) {
-        confirmSendShipToPort(shipId, portId, portName);
+        // Декодируем имя порта из HTML-экранированного формата
+        const decodedPortName = portName.replace(/&quot;/g, '"');
+        confirmSendShipToPort(shipId, portId, decodedPortName);
     }
 }
 
 async function confirmSendShipToPort(shipId, portId, portName) {
     const ship = ships.find(s => s.id === shipId);
+    const destinationPort = ports.find(p => p.id === portId);
     
-    if (!ship) {
-        showError('Судно не найдено');
+    if (!ship || !destinationPort) {
+        showError('Судно или порт не найдены');
         return;
     }
     
-    // Сначала отправляем запрос, чтобы получить точную стоимость
-    // Если недостаточно топлива - сервер вернет ошибку с деталями
+    // Получаем расстояние и расход топлива
+    const currentPort = ports.find(p => p.id === ship.currentPortId);
+    if (!currentPort) return;
+    
+    // Вычисляем расстояние (используем функцию из Port модели или приблизительно)
+    const distance = await getDistanceBetweenPorts(currentPort.name, destinationPort.name);
+    const fuelConsumption = Math.ceil(distance * 0.5); // 1 миля = 0.5 топлива
+    
+    // Проверяем достаточно ли топлива
+    const hasEnoughFuel = ship.fuel >= fuelConsumption;
+    const isInOilPort = currentPort.name === 'Порт "Нефтяной завод"';
+    
+    // Показываем модальное окно подтверждения
+    showConfirmSendModal(ship, destinationPort, distance, fuelConsumption, hasEnoughFuel, isInOilPort);
+}
+
+// Функция получения расстояния между портами
+async function getDistanceBetweenPorts(fromPort, toPort) {
+    try {
+        const response = await fetch(`${API_URL}/ports/distance?from=${encodeURIComponent(fromPort)}&to=${encodeURIComponent(toPort)}`);
+        const data = await response.json();
+        if (data.success && data.distance) {
+            return data.distance;
+        }
+    } catch (e) {
+        console.error('Ошибка получения расстояния:', e);
+    }
+    
+    // Fallback - используем приблизительные значения
+    const distances = {
+        'Порт "Нефтяной завод"': {
+            'Порт "Провизионный завод"': 150,
+            'Порт "Завод Материалов"': 200
+        },
+        'Порт "Провизионный завод"': {
+            'Порт "Нефтяной завод"': 150,
+            'Порт "Завод Материалов"': 1959
+        },
+        'Порт "Завод Материалов"': {
+            'Порт "Нефтяной завод"': 200,
+            'Порт "Провизионный завод"': 1959
+        }
+    };
+    return distances[fromPort]?.[toPort] || 0;
+}
+
+// Показать модальное окно подтверждения отправки
+function showConfirmSendModal(ship, destinationPort, distance, fuelConsumption, hasEnoughFuel, isInOilPort) {
+    const modal = document.getElementById('confirm-send-modal');
+    const body = document.getElementById('confirm-send-body');
+    
+    if (!modal || !body) return;
+    
+    // Получаем иконки
+    const getShipIcon = (type) => {
+        if (type === 'tanker' && window.ShipIcons) return window.ShipIcons.getTankerIcon(24);
+        if (type === 'cargo' && window.ShipIcons) return window.ShipIcons.getCargoShipIcon(24);
+        if (type === 'supply' && window.ShipIcons) return window.ShipIcons.getSupplyShipIcon(24);
+        return '';
+    };
+    
+    const getPortIcon = (portName) => {
+        if (portName.includes('Нефтяной') && window.FactoryIcons) return window.FactoryIcons.getOilFactoryIcon(24);
+        if (portName.includes('Материалов') && window.FactoryIcons) return window.FactoryIcons.getMaterialFactoryIcon(24);
+        if (portName.includes('Провизионный') && window.FactoryIcons) return window.FactoryIcons.getProvisionFactoryIcon(24);
+        return '';
+    };
+    
+    body.innerHTML = `
+        <div class="modal-section">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div style="width: 1.5rem; height: 1.5rem;">${getShipIcon(ship.type)}</div>
+                <div>
+                    <p style="font-size: 0.875rem; color: var(--gray-600);">Судно</p>
+                    <p style="font-weight: 600; color: var(--gray-900);">${ship.name}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-section" style="background: var(--blue-50); border: 1px solid var(--blue-200);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.25rem; height: 1.25rem; color: var(--gray-600);">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    <div>
+                        <p style="font-size: 0.75rem; color: var(--gray-600);">Откуда</p>
+                        <p style="font-size: 0.875rem; font-weight: 500; color: var(--gray-900);">${getPortName(ship.currentPortId).replace(/Порт "/g, '').replace(/"$/g, '')}</p>
+                    </div>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.25rem; height: 1.25rem; color: var(--blue-600);">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <polyline points="12 5 19 12 12 19"/>
+                </svg>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 1.25rem; height: 1.25rem;">${getPortIcon(destinationPort.name)}</div>
+                    <div>
+                        <p style="font-size: 0.75rem; color: var(--gray-600);">Куда</p>
+                        <p style="font-size: 0.875rem; font-weight: 500; color: var(--gray-900);">${destinationPort.name.replace(/Порт "/g, '').replace(/"$/g, '')}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="border-top: 1px solid var(--blue-200); padding-top: 0.75rem; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+                <div style="background: var(--white); border-radius: var(--radius-md); padding: 0.5rem;">
+                    <p style="font-size: 0.75rem; color: var(--gray-600);">Расстояние</p>
+                    <p style="font-size: 0.875rem; font-weight: 600; color: var(--gray-900);">${distance} миль</p>
+                </div>
+                <div style="background: var(--white); border-radius: var(--radius-md); padding: 0.5rem;">
+                    <p style="font-size: 0.75rem; color: var(--gray-600);">Расход топлива</p>
+                    <p style="font-size: 0.875rem; font-weight: 600; color: var(--gray-900);">⛽ ${fuelConsumption}</p>
+                </div>
+            </div>
+            
+            ${!hasEnoughFuel ? `
+                <div style="margin-top: 0.75rem; background: var(--red-100); border: 1px solid var(--red-300); border-radius: var(--radius-lg); padding: 0.75rem; display: flex; align-items: start; gap: 0.5rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.25rem; height: 1.25rem; color: var(--red-600); flex-shrink: 0; margin-top: 0.125rem;">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <div>
+                        <p style="font-size: 0.875rem; font-weight: 600; color: var(--red-800);">Недостаточно топлива!</p>
+                        <p style="font-size: 0.75rem; color: var(--red-700); margin-top: 0.25rem;">
+                            Требуется: ⛽ ${fuelConsumption}, Доступно: ⛽ ${ship.fuel}
+                        </p>
+                    </div>
+                </div>
+            ` : ''}
+        </div>
+        
+        ${hasEnoughFuel ? `
+            <div style="display: flex; gap: 0.75rem;">
+                <button class="btn-secondary" onclick="closeConfirmSendModal()" style="flex: 1;">Отмена</button>
+                <button class="btn-primary" onclick="executeSendShip('${ship.id}', '${destinationPort.id}')" style="flex: 1; background: var(--blue-600);">Отправить</button>
+            </div>
+        ` : isInOilPort ? `
+            <div style="background: var(--blue-50); border: 1px solid var(--blue-200); border-radius: var(--radius-lg); padding: 0.75rem; margin-bottom: 0.75rem;">
+                <p style="font-size: 0.875rem; color: var(--blue-800); text-align: center; margin-bottom: 0.5rem;">
+                    ⛽️ Недостаточно топлива для отправки
+                </p>
+                <p style="font-size: 0.75rem; color: var(--gray-600); text-align: center;">
+                    Вы находитесь в Нефтяном заводе. Заправьте судно перед отправкой!
+                </p>
+            </div>
+            <button class="btn-primary" onclick="openRefuelFromSendModal('${ship.id}')" style="width: 100%; margin-bottom: 0.5rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.25rem; height: 1.25rem;">
+                    <path d="M3 3h18v18H3zM12 8v8m-4-4h8"/>
+                </svg>
+                Заправить судно
+            </button>
+            <button class="btn-secondary" onclick="closeConfirmSendModal()" style="width: 100%;">Отмена</button>
+        ` : `
+            <div style="background: var(--yellow-50); border: 1px solid var(--yellow-200); border-radius: var(--radius-lg); padding: 0.75rem; margin-bottom: 0.75rem;">
+                <p style="font-size: 0.875rem; color: var(--yellow-800); text-align: center; margin-bottom: 0.5rem;">
+                    ⛽️ Для отправки требуется больше топлива
+                </p>
+                <p style="font-size: 0.75rem; color: var(--gray-600); text-align: center;">
+                    Вы можете отбуксировать судно в Нефтяной завод для бункеровки
+                </p>
+            </div>
+            <button class="btn-primary btn-orange" onclick="towFromSendModal('${ship.id}')" style="width: 100%; margin-bottom: 0.5rem; ${(currentUser.coins || 0) < 1000 ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${(currentUser.coins || 0) < 1000 ? 'disabled' : ''}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.25rem; height: 1.25rem;">
+                    <circle cx="12" cy="5" r="3"/>
+                    <line x1="12" y1="8" x2="12" y2="16"/>
+                    <path d="M5 12h14"/>
+                </svg>
+                Буксировка в Нефтяной завод (💰 1000)
+            </button>
+            ${(currentUser.coins || 0) < 1000 ? '<p style="font-size: 0.75rem; color: var(--red-600); text-align: center;">Недостаточно средств для буксировки</p>' : ''}
+            <button class="btn-secondary" onclick="closeConfirmSendModal()" style="width: 100%;">Отмена</button>
+        `}
+    `;
+    
+    modal.classList.add('active');
+}
+
+// Выполнить отправку судна
+async function executeSendShip(shipId, portId) {
+    const port = ports.find(p => p.id === portId);
+    if (!port) return;
+    
     try {
         const data = await apiRequest(`${API_URL}/ships/${shipId}/travel`, {
             method: 'POST',
@@ -1396,9 +1580,8 @@ async function confirmSendShipToPort(shipId, portId, portName) {
         });
         
         if (data.success) {
-            const fuelInfo = data.fuelCost ? ` (расход топлива: ${data.fuelCost})` : '';
-            const distanceInfo = data.distance ? ` (расстояние: ${data.distance} миль)` : '';
-            showSuccess(`Судно отправлено в ${portName}!${fuelInfo}${distanceInfo}`);
+            closeConfirmSendModal();
+            showSuccess(`Судно отправлено в ${port.name}!`);
             await loadUserData();
             updateUI();
             const shipModal = document.getElementById('ship-modal');
@@ -1408,18 +1591,49 @@ async function confirmSendShipToPort(shipId, portId, portName) {
         }
     } catch (error) {
         // Ошибка уже обработана в apiRequest
-        // Если не хватает топлива - предлагаем буксировку в порт "Нефтяной завод"
-        if (error && error.message && error.message.startsWith('Недостаточно топлива')) {
-            const ship = ships.find(s => s.id === shipId);
-            const currentPort = ports.find(p => p.id === ship.currentPortId);
-            if (ship && currentPort) {
-                // Примерная оценка стоимости (точная будет рассчитана на сервере)
-                const estimatedCost = 500 + 1000; // базовая + примерная доплата
-                confirmTowShip(shipId, currentPort.name, estimatedCost);
-            }
-        }
     }
 }
+
+// Закрыть модальное окно подтверждения отправки
+function closeConfirmSendModal() {
+    const modal = document.getElementById('confirm-send-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+// Открыть бункеровку из модального окна отправки
+function openRefuelFromSendModal(shipId) {
+    closeConfirmSendModal();
+    const shipModal = document.getElementById('ship-modal');
+    if (shipModal) {
+        shipModal.classList.remove('active');
+    }
+    setTimeout(() => {
+        openShipModal(shipId);
+        setTimeout(() => {
+            const refuelBtn = document.querySelector('[onclick*="openRefuelModal"]');
+            if (refuelBtn) {
+                refuelBtn.click();
+            }
+        }, 100);
+    }, 100);
+}
+
+// Буксировка из модального окна отправки
+async function towFromSendModal(shipId) {
+    closeConfirmSendModal();
+    const ship = ships.find(s => s.id === shipId);
+    const currentPort = ports.find(p => p.id === ship.currentPortId);
+    if (ship && currentPort) {
+        await towShip(shipId);
+    }
+}
+
+window.executeSendShip = executeSendShip;
+window.closeConfirmSendModal = closeConfirmSendModal;
+window.openRefuelFromSendModal = openRefuelFromSendModal;
+window.towFromSendModal = towFromSendModal;
 
 async function sendShipToPort(shipId, portId) {
     // Обертка для обратной совместимости
@@ -1463,8 +1677,142 @@ async function confirmLoadCargo(shipId, cargoType, maxAvailable, pricePerUnit) {
         return;
     }
     
-    await selectCargo(shipId, cargoType, amount);
+    // Показываем модальное окно подтверждения загрузки
+    const ship = ships.find(s => s.id === shipId);
+    if (ship) {
+        showConfirmLoadCargoModal(ship, cargoType, amount, pricePerUnit);
+    }
 }
+
+// Показать модальное окно подтверждения загрузки
+function showConfirmLoadCargoModal(ship, cargoName, cargoAmount, pricePerUnit) {
+    const modal = document.getElementById('confirm-load-modal');
+    const body = document.getElementById('confirm-load-body');
+    
+    if (!modal || !body) return;
+    
+    const totalCost = pricePerUnit * cargoAmount;
+    const hasEnoughMoney = (currentUser.coins || 0) >= totalCost;
+    
+    // Получаем иконки
+    const getShipIcon = (type) => {
+        if (type === 'tanker' && window.ShipIcons) return window.ShipIcons.getTankerIcon(24);
+        if (type === 'cargo' && window.ShipIcons) return window.ShipIcons.getCargoShipIcon(24);
+        if (type === 'supply' && window.ShipIcons) return window.ShipIcons.getSupplyShipIcon(24);
+        return '';
+    };
+    
+    const getCargoIcon = (name) => {
+        if (name === 'oil' && window.CargoIcons) return window.CargoIcons.getOilIcon(32);
+        if (name === 'materials' && window.CargoIcons) return window.CargoIcons.getMaterialsIcon(32);
+        if (name === 'provisions' && window.CargoIcons) return window.CargoIcons.getProvisionIcon(32);
+        return '';
+    };
+    
+    body.innerHTML = `
+        <div class="modal-section">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div style="width: 1.5rem; height: 1.5rem;">${getShipIcon(ship.type)}</div>
+                <div>
+                    <p style="font-size: 0.875rem; color: var(--gray-600);">Судно</p>
+                    <p style="font-weight: 600; color: var(--gray-900);">${ship.name}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-section" style="background: var(--green-50); border: 2px solid var(--green-200);">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 1rem;">
+                <div style="width: 2.5rem; height: 2.5rem;">${getCargoIcon(cargoName)}</div>
+                <div style="text-align: center;">
+                    <p style="font-weight: bold; color: var(--gray-900); font-size: 1.125rem;">${getCargoName(cargoName)}</p>
+                    <p style="font-size: 0.875rem; color: var(--gray-600);">${cargoAmount} единиц</p>
+                </div>
+            </div>
+            
+            <div style="background: var(--white); border-radius: var(--radius-lg); padding: 0.75rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                    <span style="color: var(--gray-600);">Цена за единицу:</span>
+                    <span style="font-weight: 600; color: var(--gray-900); display: flex; align-items: center; gap: 0.25rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--yellow-500);">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v12M15 9a3 3 0 1 0-6 0"/>
+                        </svg>
+                        ${pricePerUnit}
+                    </span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                    <span style="color: var(--gray-600);">Количество:</span>
+                    <span style="font-weight: 600; color: var(--gray-900);">${cargoAmount} ед.</span>
+                </div>
+                <div style="border-top: 1px solid var(--gray-200); padding-top: 0.5rem; margin-top: 0.5rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-weight: 600; color: var(--gray-700);">Стоимость:</span>
+                        <span style="font-size: 1.25rem; font-weight: bold; color: var(--red-600); display: flex; align-items: center; gap: 0.25rem;">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.25rem; height: 1.25rem; color: var(--yellow-500);">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 6v12M15 9a3 3 0 1 0-6 0"/>
+                            </svg>
+                            ${totalCost}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-section" style="${hasEnoughMoney ? 'background: var(--blue-50); border: 1px solid var(--blue-200);' : 'background: var(--red-50); border: 1px solid var(--red-200);'}">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 0.875rem; color: var(--gray-600);">Ваш баланс:</span>
+                <span style="font-weight: bold; display: flex; align-items: center; gap: 0.25rem; ${hasEnoughMoney ? 'color: var(--green-600);' : 'color: var(--red-600);'}">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.25rem; height: 1.25rem; color: var(--yellow-500);">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v12M15 9a3 3 0 1 0-6 0"/>
+                    </svg>
+                    ${(currentUser.coins || 0).toLocaleString()}
+                </span>
+            </div>
+            ${!hasEnoughMoney ? '<p style="font-size: 0.75rem; color: var(--red-600); margin-top: 0.5rem; text-align: center;">⚠️ Недостаточно средств для покупки груза</p>' : ''}
+        </div>
+        
+        <div style="display: flex; gap: 0.75rem;">
+            <button class="btn-secondary" onclick="closeConfirmLoadModal()" style="flex: 1;">Отмена</button>
+            <button class="btn-primary btn-green" onclick="executeLoadCargo('${ship.id}', '${cargoName}', ${cargoAmount})" ${!hasEnoughMoney ? 'disabled' : ''} style="flex: 1; ${!hasEnoughMoney ? 'opacity: 0.5; cursor: not-allowed;' : ''}">Загрузить</button>
+        </div>
+    `;
+    
+    modal.classList.add('active');
+}
+
+// Выполнить загрузку груза
+async function executeLoadCargo(shipId, cargoType, amount) {
+    try {
+        const data = await apiRequest(`${API_URL}/ships/${shipId}/load`, {
+            method: 'POST',
+            body: JSON.stringify({ cargoType, amount })
+        });
+        
+        if (data.success) {
+            closeConfirmLoadModal();
+            showSuccess('Груз загружен!');
+            await loadUserData();
+            await loadPorts();
+            updateUI();
+            openShipModal(shipId);
+        }
+    } catch (error) {
+        // Ошибка уже обработана в apiRequest
+    }
+}
+
+// Закрыть модальное окно подтверждения загрузки
+function closeConfirmLoadModal() {
+    const modal = document.getElementById('confirm-load-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+window.executeLoadCargo = executeLoadCargo;
+window.closeConfirmLoadModal = closeConfirmLoadModal;
 
 async function selectCargo(shipId, cargoType, amount) {
     try {
@@ -1486,6 +1834,12 @@ async function selectCargo(shipId, cargoType, amount) {
 }
 
 async function unloadCargo(shipId) {
+    const ship = ships.find(s => s.id === shipId);
+    if (!ship || !ship.cargo) {
+        showError('Судно или груз не найдены');
+        return;
+    }
+    
     try {
         // Всегда продаем в порт
         const data = await apiRequest(`${API_URL}/ships/${shipId}/unload`, {
@@ -1494,35 +1848,210 @@ async function unloadCargo(shipId) {
         });
         
         if (data.success) {
-            // Формируем детальное сообщение о выгрузке
-            let message = `Груз выгружен в порт! 💰 Получено: ${data.reward} монет`;
+            // Показываем модальное окно успешной выгрузки
+            showUnloadSuccessModal(ship.cargo.type, ship.cargo.amount, data.reward, data.grossProfit, data.profitTax, data.portFees);
             
-            // Добавляем детали в одну строку для совместимости с alert
-            const details = [];
-            if (data.grossProfit !== undefined) {
-                details.push(`Прибыль: ${data.grossProfit}`);
-            }
-            if (data.portFees !== undefined && data.portFees > 0) {
-                details.push(`Сборы: ${data.portFees}`);
-            }
-            if (data.profitTax !== undefined && data.profitTax > 0) {
-                details.push(`Налог: ${data.profitTax}`);
-            }
-            
-            if (details.length > 0) {
-                message += ` (${details.join(', ')})`;
-            }
-            
-            showSuccess(message);
             await loadUserData();
             await loadPorts();
             updateUI();
-            openShipModal(shipId);
+            
+            // Закрываем модальное окно судна
+            const shipModal = document.getElementById('ship-modal');
+            if (shipModal) {
+                shipModal.classList.remove('active');
+            }
         }
     } catch (error) {
+        // Проверяем, является ли ошибка связанной с неправильным портом
+        if (error && error.message && (error.message.includes('нельзя выгружать') || error.message.includes('можно выгрузить только'))) {
+            // Показываем модальное окно ошибки выгрузки
+            const validPorts = getValidUnloadPorts(ship.cargo.type);
+            showUnloadErrorModal(ship.cargo.type, validPorts);
+        }
         // Ошибка уже обработана в apiRequest
     }
 }
+
+// Получить валидные порты для выгрузки
+function getValidUnloadPorts(cargoType) {
+    // Система производства 1+1=3:
+    // Нефтяной завод: Материалы + Провизия → Нефть
+    // Завод Материалов: Нефть + Провизия → Материалы
+    // Провизионный завод: Нефть + Материалы → Провизия
+    
+    if (cargoType === 'oil') {
+        return ['Порт "Завод Материалов"', 'Порт "Провизионный завод"'];
+    } else if (cargoType === 'materials') {
+        return ['Порт "Нефтяной завод"', 'Порт "Провизионный завод"'];
+    } else if (cargoType === 'provisions') {
+        return ['Порт "Нефтяной завод"', 'Порт "Завод Материалов"'];
+    }
+    return [];
+}
+
+// Показать модальное окно успешной выгрузки
+function showUnloadSuccessModal(cargoName, amount, profit, grossProfit, tax, portFees) {
+    const modal = document.getElementById('unload-success-modal');
+    const body = document.getElementById('unload-success-body');
+    
+    if (!modal || !body) return;
+    
+    const getCargoIcon = (name) => {
+        if (name === 'oil' && window.CargoIcons) return window.CargoIcons.getOilIcon(20);
+        if (name === 'materials' && window.CargoIcons) return window.CargoIcons.getMaterialsIcon(20);
+        if (name === 'provisions' && window.CargoIcons) return window.CargoIcons.getProvisionIcon(20);
+        return '';
+    };
+    
+    body.innerHTML = `
+        <div class="modal-section">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                <span style="font-size: 0.875rem; color: var(--gray-600);">Груз:</span>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 1.25rem; height: 1.25rem;">${getCargoIcon(cargoName)}</div>
+                    <span style="font-weight: 600; color: var(--gray-900);">${getCargoName(cargoName)}</span>
+                </div>
+            </div>
+            
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                <span style="font-size: 0.875rem; color: var(--gray-600);">Количество:</span>
+                <span style="font-weight: 600; color: var(--gray-900);">${amount} ед.</span>
+            </div>
+            
+            ${grossProfit ? `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.875rem; color: var(--gray-600);">Цена за единицу:</span>
+                    <span style="font-weight: 600; color: var(--gray-900); display: flex; align-items: center; gap: 0.25rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--yellow-500);">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v12M15 9a3 3 0 1 0-6 0"/>
+                        </svg>
+                        ${Math.floor(grossProfit / amount)}
+                    </span>
+                </div>
+                
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.875rem; color: var(--gray-600);">Валовая прибыль:</span>
+                    <span style="font-weight: 600; color: var(--gray-900); display: flex; align-items: center; gap: 0.25rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--yellow-500);">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v12M15 9a3 3 0 1 0-6 0"/>
+                        </svg>
+                        ${grossProfit}
+                    </span>
+                </div>
+                
+                <div style="border-top: 1px solid var(--gray-200); padding-top: 0.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                    <div style="font-size: 0.75rem; font-weight: 600; color: var(--gray-700); margin-bottom: 0.5rem;">Вычеты:</div>
+                    ${tax !== undefined && tax > 0 ? `
+                        <div style="display: flex; align-items: center; justify-content: space-between; background: var(--red-50); border-radius: var(--radius-sm); padding: 0.5rem; margin-bottom: 0.25rem;">
+                            <span style="font-size: 0.75rem; color: var(--gray-600);">📋 Налог (15%):</span>
+                            <span style="font-size: 0.875rem; font-weight: 600; color: var(--red-600);">- ${tax}</span>
+                        </div>
+                    ` : ''}
+                    ${portFees !== undefined && portFees > 0 ? `
+                        <div style="display: flex; align-items: center; justify-content: space-between; background: var(--red-50); border-radius: var(--radius-sm); padding: 0.5rem;">
+                            <span style="font-size: 0.75rem; color: var(--gray-600);">⚓ Портовые сборы:</span>
+                            <span style="font-size: 0.875rem; font-weight: 600; color: var(--red-600);">- ${portFees}</span>
+                        </div>
+                    ` : ''}
+                </div>
+            ` : ''}
+            
+            <div style="border-top: 2px solid var(--gray-300); padding-top: 0.75rem; margin-top: 0.75rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <span style="font-size: 1rem; font-weight: 600; color: var(--gray-700);">Чистая прибыль:</span>
+                    <span style="font-size: 1.25rem; font-weight: bold; color: var(--green-600); display: flex; align-items: center; gap: 0.25rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.25rem; height: 1.25rem; color: var(--yellow-500);">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v12M15 9a3 3 0 1 0-6 0"/>
+                        </svg>
+                        ${profit}
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <button class="btn-primary btn-green" onclick="closeUnloadSuccessModal()" style="width: 100%;">Отлично!</button>
+    `;
+    
+    modal.classList.add('active');
+}
+
+// Показать модальное окно ошибки выгрузки
+function showUnloadErrorModal(cargoName, validPorts) {
+    const modal = document.getElementById('unload-error-modal');
+    const body = document.getElementById('unload-error-body');
+    
+    if (!modal || !body) return;
+    
+    const getCargoIcon = (name) => {
+        if (name === 'oil' && window.CargoIcons) return window.CargoIcons.getOilIcon(20);
+        if (name === 'materials' && window.CargoIcons) return window.CargoIcons.getMaterialsIcon(20);
+        if (name === 'provisions' && window.CargoIcons) return window.CargoIcons.getProvisionIcon(20);
+        return '';
+    };
+    
+    const getPortIcon = (portName) => {
+        if (portName.includes('Нефтяной') && window.FactoryIcons) return window.FactoryIcons.getOilFactoryIcon(20);
+        if (portName.includes('Материалов') && window.FactoryIcons) return window.FactoryIcons.getMaterialFactoryIcon(20);
+        if (portName.includes('Провизионный') && window.FactoryIcons) return window.FactoryIcons.getProvisionFactoryIcon(20);
+        return '';
+    };
+    
+    body.innerHTML = `
+        <div class="modal-section" style="background: var(--red-50); border: 1px solid var(--red-200);">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                <div style="width: 1.25rem; height: 1.25rem;">${getCargoIcon(cargoName)}</div>
+                <span style="font-weight: 600; color: var(--gray-900);">${getCargoName(cargoName)}</span>
+            </div>
+            
+            <p style="font-size: 0.875rem; color: var(--gray-700); line-height: 1.6; text-align: center; margin-bottom: 0.75rem;">
+                Этот груз можно выгрузить только в следующих портах:
+            </p>
+            
+            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem;">
+                ${validPorts.map(port => `
+                    <div style="background: var(--white); border-radius: var(--radius-lg); padding: 0.75rem; display: flex; align-items: center; gap: 0.5rem; border: 1px solid var(--gray-200);">
+                        <div style="width: 1.25rem; height: 1.25rem; flex-shrink: 0;">${getPortIcon(port)}</div>
+                        <span style="font-size: 0.875rem; font-weight: 500; color: var(--gray-900);">${port.replace(/Порт "/g, '').replace(/"$/g, '')}</span>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <p style="font-size: 0.875rem; font-weight: 600; color: var(--red-700); margin-top: 0.75rem; text-align: center; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                    <circle cx="12" cy="10" r="3"/>
+                </svg>
+                Отправьтесь в нужный порт!
+            </p>
+        </div>
+        
+        <button class="btn-primary btn-red" onclick="closeUnloadErrorModal()" style="width: 100%;">Понятно</button>
+    `;
+    
+    modal.classList.add('active');
+}
+
+// Закрыть модальное окно успешной выгрузки
+function closeUnloadSuccessModal() {
+    const modal = document.getElementById('unload-success-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+// Закрыть модальное окно ошибки выгрузки
+function closeUnloadErrorModal() {
+    const modal = document.getElementById('unload-error-modal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+}
+
+window.closeUnloadSuccessModal = closeUnloadSuccessModal;
+window.closeUnloadErrorModal = closeUnloadErrorModal;
 
 async function repairShip(shipId) {
     try {
@@ -1590,11 +2119,104 @@ async function confirmRefuelFromPort(shipId, maxAvailable, fuelNeeded, pricePerU
         return;
     }
     
-    // Закрываем модальное окно бункеровки
-    closeRefuelModal();
+    // Показываем модальное окно подтверждения оплаты
+    const ship = ships.find(s => s.id === shipId);
+    if (ship) {
+        showRefuelConfirmModal(ship, amount, pricePerUnit);
+    }
+}
+
+// Показать модальное окно подтверждения оплаты бункеровки
+function showRefuelConfirmModal(ship, refuelAmount, pricePerUnit) {
+    const refuelCost = Math.ceil(refuelAmount * pricePerUnit);
+    const hasEnoughMoney = (currentUser.coins || 0) >= refuelCost;
     
+    // Создаем модальное окно подтверждения оплаты
+    const confirmModal = document.createElement('div');
+    confirmModal.className = 'modal active';
+    confirmModal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-header-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.5rem; height: 1.5rem;">
+                        <path d="M3 3h18v18H3zM12 8v8m-4-4h8"/>
+                    </svg>
+                    <span>Подтверждение оплаты</span>
+                </div>
+                <span class="modal-close" onclick="closeRefuelConfirmModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section" style="background: var(--yellow-50); border: 1px solid var(--yellow-200);">
+                    <div style="display: flex; align-items: start; gap: 0.75rem;">
+                        <div style="font-size: 1.5rem;">⚠️</div>
+                        <div style="flex: 1;">
+                            <p style="font-size: 0.875rem; color: var(--gray-700); margin-bottom: 0.5rem;">
+                                С вашего баланса будет списано:
+                            </p>
+                            <p style="font-size: 1.5rem; font-weight: bold; color: var(--primary-blue); margin-bottom: 0.5rem;">
+                                💰 ${refuelCost}
+                            </p>
+                            <p style="font-size: 0.875rem; color: var(--gray-600);">
+                                За бункеровку ${refuelAmount} единиц топлива в Нефтяном заводе
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-section">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                        <span style="color: var(--gray-600);">Количество топлива:</span>
+                        <span style="font-weight: 600; color: var(--gray-900);">${refuelAmount}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                        <span style="color: var(--gray-600);">Цена за единицу:</span>
+                        <span style="font-weight: 600; color: var(--gray-900);">💰 ${pricePerUnit}</span>
+                    </div>
+                    <div style="border-top: 1px solid var(--gray-200); padding-top: 0.5rem; margin-top: 0.5rem;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="font-weight: 600; color: var(--gray-700);">Итого к оплате:</span>
+                            <span style="font-weight: bold; color: var(--primary-blue);">💰 ${refuelCost}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                ${!hasEnoughMoney ? `
+                    <div class="modal-section" style="background: var(--red-50); border: 1px solid var(--red-200);">
+                        <p style="font-size: 0.875rem; color: var(--red-600);">
+                            ⚠️ Недостаточно средств на балансе
+                        </p>
+                    </div>
+                ` : ''}
+                
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn-secondary" onclick="closeRefuelConfirmModal()" style="flex: 1;">Отмена</button>
+                    <button class="btn-primary" onclick="executeRefuel('${ship.id}', ${refuelAmount})" ${!hasEnoughMoney ? 'disabled' : ''} style="flex: 1; ${!hasEnoughMoney ? 'opacity: 0.5; cursor: not-allowed;' : ''}">Подтвердить</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(confirmModal);
+    window.currentRefuelConfirmModal = confirmModal;
+}
+
+// Выполнить заправку
+async function executeRefuel(shipId, amount) {
+    closeRefuelConfirmModal();
+    closeRefuelModal();
     await refuelShipFromPort(shipId, amount);
 }
+
+// Закрыть модальное окно подтверждения бункеровки
+function closeRefuelConfirmModal() {
+    if (window.currentRefuelConfirmModal) {
+        window.currentRefuelConfirmModal.remove();
+        window.currentRefuelConfirmModal = null;
+    }
+}
+
+window.executeRefuel = executeRefuel;
+window.closeRefuelConfirmModal = closeRefuelConfirmModal;
 
 // Функция заправки судна из порта
 async function refuelShipFromPort(shipId, amount) {
@@ -1605,16 +2227,17 @@ async function refuelShipFromPort(shipId, amount) {
         });
         
         if (data.success) {
+            closeRefuelModal();
+            closeRefuelConfirmModal();
             showSuccess(`Судно заправлено на ${data.fueled} единиц! Стоимость: 💰 ${data.cost}`);
             await loadUserData();
             await loadPorts(false);
             updateUI();
-            // Закрываем модальное окно бункеровки, если открыто
-            closeRefuelModal();
             openShipModal(shipId);
         }
     } catch (error) {
         // Ошибка уже обработана в apiRequest
+        closeRefuelConfirmModal();
     }
 }
 
@@ -1786,7 +2409,7 @@ async function showBuyShipModal() {
             </p>
             <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                 ${shipsWithPrices.map(st => `
-                    <div class="ship-card" onclick="purchaseShip('${st.type}')" style="cursor: pointer;">
+                    <div onclick="purchaseShip('${st.type}')" style="background: var(--white); border: 2px solid var(--gray-200); border-radius: var(--radius-xl); padding: 1rem; cursor: pointer; transition: all 0.2s; hover:border-color: var(--primary-blue); hover:box-shadow: var(--shadow-md);">
                         <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
                             <div style="width: 4rem; height: 4rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                                 ${getShipIcon(st.type)}
@@ -1822,10 +2445,10 @@ async function showBuyShipModal() {
                                 ${st.error ? `
                                     <p style="color: var(--red-600); font-size: 0.875rem; margin-top: 0.5rem;">Ошибка: ${st.error}</p>
                                 ` : st.existingShipsCount > 0 ? `
-                                    <p style="font-size: 0.75em; color: var(--gray-500); margin-top: 0.5rem;">
+                                    <p style="font-size: 0.75rem; color: var(--gray-500); margin-top: 0.5rem;">
                                         У вас уже ${st.existingShipsCount} ${st.existingShipsCount === 1 ? 'судно' : st.existingShipsCount < 5 ? 'судна' : 'судов'} этого типа
                                     </p>
-                                    <p style="font-size: 0.7em; color: var(--gray-400);">
+                                    <p style="font-size: 0.7rem; color: var(--gray-400);">
                                         Базовая цена: ${st.basePrice} (это ${st.nextShipNumber}-е судно)
                                     </p>
                                 ` : ''}

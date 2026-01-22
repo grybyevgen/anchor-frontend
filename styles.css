@@ -1,4 +1,4 @@
-/* Дизайн из Figma - Морское Судоходство */
+/* Точный дизайн из Figma - Морское Судоходство */
 
 * {
     margin: 0;
@@ -16,9 +16,11 @@
     --gray-100: #f3f4f6;
     --gray-200: #e5e7eb;
     --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
     --gray-500: #6b7280;
     --gray-600: #4b5563;
     --gray-700: #374151;
+    --gray-800: #1f2937;
     --gray-900: #111827;
     --green-50: #f0fdf4;
     --green-100: #dcfce7;
@@ -44,16 +46,28 @@
     --red-500: #ef4444;
     --red-600: #dc2626;
     --red-700: #b91c1c;
+    --red-800: #991b1b;
+    --red-900: #7f1d1d;
     --yellow-50: #fefce8;
     --yellow-100: #fef9c3;
     --yellow-200: #fef08a;
     --yellow-400: #facc15;
     --yellow-500: #eab308;
-    --gray-800: #1f2937;
+    --blue-50: #eff6ff;
+    --blue-100: #dbeafe;
+    --blue-200: #bfdbfe;
+    --blue-300: #93c5fd;
+    --blue-500: #3b82f6;
+    --blue-600: #2563eb;
+    --cyan-500: #06b6d4;
+    --cyan-600: #0891b2;
+    --emerald-500: #10b981;
+    --emerald-600: #059669;
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     --radius-sm: 0.375rem;
     --radius-md: 0.5rem;
     --radius-lg: 0.75rem;
@@ -63,14 +77,15 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: var(--background);
+    background: var(--gray-50);
     color: var(--gray-900);
     line-height: 1.5;
     padding: 0;
     margin: 0;
+    min-height: 100vh;
 }
 
-/* Header */
+/* Header - ТОЧНО КАК В FIGMA */
 .header {
     background: var(--primary-blue);
     color: var(--white);
@@ -79,7 +94,6 @@ body {
     position: sticky;
     top: 0;
     z-index: 50;
-    border-radius: 0;
 }
 
 .header-content {
@@ -96,17 +110,17 @@ body {
     gap: 0.5rem;
 }
 
-.header-title h1 {
-    font-size: 1.125rem;
-    font-weight: 600;
-    color: var(--white);
-    margin: 0;
-}
-
 .header-title svg {
     width: 1.5rem;
     height: 1.5rem;
     color: var(--white);
+}
+
+.header-title h1 {
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: var(--white);
+    margin: 0;
 }
 
 .user-info {
@@ -148,6 +162,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .user-avatar img {
@@ -157,7 +172,7 @@ body {
     object-fit: cover;
 }
 
-/* Navigation */
+/* Navigation - ТОЧНО КАК В FIGMA */
 .tabs {
     background: var(--white);
     border-bottom: 1px solid var(--gray-200);
@@ -234,19 +249,19 @@ body {
     color: var(--primary-blue);
 }
 
-/* Ship Cards */
+/* Ship Cards - ТОЧНО КАК В FIGMA */
 .ships-list, .ports-list {
     display: flex;
     flex-direction: column;
-    gap: 0.625rem;
+    gap: 1rem;
     margin-bottom: 1rem;
 }
 
 .ship-card, .port-card {
     background: var(--white);
     border-radius: var(--radius-xl);
-    padding: 1rem;
     box-shadow: var(--shadow-md);
+    padding: 1rem;
     cursor: pointer;
     transition: all 0.2s;
     border: 1px solid var(--gray-100);
@@ -254,7 +269,6 @@ body {
 
 .ship-card:hover, .port-card:hover {
     box-shadow: var(--shadow-lg);
-    transform: translateY(-1px);
 }
 
 .ship-card-header {
@@ -276,6 +290,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .ship-card-title {
@@ -301,6 +316,7 @@ body {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
     border-radius: 9999px;
+    font-weight: 500;
 }
 
 .ship-card-body {
@@ -322,7 +338,7 @@ body {
     height: 1rem;
 }
 
-/* Progress Bar */
+/* Progress Bar - ТОЧНО КАК В FIGMA */
 .progress-section {
     display: flex;
     flex-direction: column;
@@ -335,6 +351,7 @@ body {
     gap: 0.375rem;
     font-size: 0.875rem;
     color: var(--gray-700);
+    margin-bottom: 0.25rem;
 }
 
 .progress-label svg {
@@ -394,6 +411,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .cargo-info {
@@ -406,7 +424,7 @@ body {
     color: var(--gray-800);
 }
 
-/* Port Cards */
+/* Port Cards - ТОЧНО КАК В FIGMA */
 .port-card-header {
     display: flex;
     align-items: flex-start;
@@ -501,6 +519,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .cargo-chip-amount {
@@ -517,7 +536,7 @@ body {
     color: var(--orange-700);
 }
 
-/* Buttons */
+/* Buttons - ТОЧНО КАК В FIGMA */
 .btn-primary {
     width: 100%;
     padding: 0.75rem 1rem;
@@ -526,7 +545,7 @@ body {
     border: none;
     border-radius: var(--radius-lg);
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -571,12 +590,12 @@ body {
 }
 
 .btn-orange {
-    background: var(--orange-600);
+    background: var(--orange-500);
     color: var(--white);
 }
 
 .btn-orange:hover {
-    background: var(--orange-700);
+    background: var(--orange-600);
 }
 
 .btn-red {
@@ -588,7 +607,7 @@ body {
     background: var(--red-700);
 }
 
-/* Fixed Buy Ship Button */
+/* Fixed Buy Ship Button - ТОЧНО КАК В FIGMA */
 .buy-ship-fixed {
     position: fixed;
     bottom: 0;
@@ -605,7 +624,13 @@ body {
     margin: 0 auto;
 }
 
-/* Modal */
+.buy-ship-fixed .btn-primary {
+    padding: 1rem;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+}
+
+/* Modal - ТОЧНО КАК В FIGMA */
 .modal {
     display: none;
     position: fixed;
@@ -624,7 +649,7 @@ body {
 .modal-content {
     background: var(--white);
     border-radius: var(--radius-2xl);
-    box-shadow: var(--shadow-xl);
+    box-shadow: var(--shadow-2xl);
     max-width: 28rem;
     width: 100%;
     max-height: 90vh;
@@ -707,7 +732,7 @@ body {
     height: 1rem;
 }
 
-/* Cargo Selection */
+/* Cargo Selection - ТОЧНО КАК В FIGMA */
 .cargo-selection-list {
     display: flex;
     flex-direction: column;
@@ -727,6 +752,7 @@ body {
     align-items: center;
     justify-content: space-between;
     font-size: 0.875rem;
+    font-weight: 500;
 }
 
 .cargo-selection-item:hover {
@@ -765,6 +791,9 @@ body {
 .cargo-selection-icon {
     width: 1.5rem;
     height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .cargo-selection-name {
@@ -778,6 +807,7 @@ body {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
     border-radius: 9999px;
+    font-weight: 600;
 }
 
 .cargo-amount-control {
@@ -836,7 +866,7 @@ body {
     color: var(--gray-500);
 }
 
-/* Port Selection */
+/* Port Selection - ТОЧНО КАК В FIGMA */
 .port-selection-list {
     display: flex;
     flex-direction: column;
@@ -845,27 +875,26 @@ body {
 
 .port-selection-item {
     width: 100%;
-    background: var(--primary-blue);
-    background: linear-gradient(to right, #e0f2fe, #bae6fd);
-    border: 1px solid var(--primary-blue-light);
-    color: var(--primary-blue);
+    background: var(--blue-50);
+    border: 1px solid var(--blue-200);
+    color: var(--blue-700);
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-lg);
     cursor: pointer;
     transition: all 0.2s;
     text-align: left;
     font-size: 0.875rem;
+    font-weight: 500;
 }
 
 .port-selection-item:hover {
-    background: linear-gradient(to right, #bae6fd, #93c5fd);
+    background: var(--blue-100);
 }
 
-/* Confirmation Box */
+/* Confirmation Box - ТОЧНО КАК В FIGMA */
 .confirmation-box {
-    background: var(--primary-blue);
-    background: linear-gradient(to right, #dbeafe, #bfdbfe);
-    border: 2px solid var(--primary-blue-light);
+    background: var(--blue-50);
+    border: 2px solid var(--blue-300);
     border-radius: var(--radius-lg);
     padding: 1rem;
 }
@@ -873,7 +902,7 @@ body {
 .confirmation-title {
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--primary-blue);
+    color: var(--blue-900);
     text-align: center;
     margin-bottom: 0.75rem;
 }
@@ -950,7 +979,7 @@ body {
     text-align: center;
 }
 
-/* Fleet Stats */
+/* Fleet Stats - ТОЧНО КАК В FIGMA */
 .fleet-stats {
     display: flex;
     flex-direction: column;
@@ -1247,6 +1276,8 @@ body {
 .justify-center { justify-content: center; }
 
 .space-y-2 > * + * { margin-top: 0.5rem; }
+.space-y-3 > * + * { margin-top: 0.75rem; }
+.space-y-4 > * + * { margin-top: 1rem; }
 
 /* Responsive */
 @media (max-width: 640px) {
