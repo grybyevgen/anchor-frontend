@@ -246,22 +246,38 @@ function setupEventListeners() {
     // Переключение вкладок
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const tab = e.target.dataset.tab;
-            switchTab(tab);
+            const tab = e.currentTarget.dataset.tab || e.target.closest('.tab-btn')?.dataset.tab;
+            if (tab) {
+                switchTab(tab);
+            }
         });
     });
 
-    // Модальные окна
-    document.querySelectorAll('.close').forEach(close => {
+    // Модальные окна - обработчики закрытия
+    document.querySelectorAll('.modal-close, .close').forEach(close => {
         close.addEventListener('click', () => {
             document.querySelectorAll('.modal').forEach(modal => {
+                modal.classList.remove('active');
                 modal.style.display = 'none';
             });
         });
     });
+    
+    // Закрытие модальных окон при клике вне их
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+                modal.style.display = 'none';
+            }
+        });
+    });
 
     // Кнопка покупки судна
-    document.getElementById('buy-ship-btn').addEventListener('click', showBuyShipModal);
+    const buyShipBtn = document.getElementById('buy-ship-btn');
+    if (buyShipBtn) {
+        buyShipBtn.addEventListener('click', showBuyShipModal);
+    }
 }
 
 async function switchTab(tabName) {
@@ -270,14 +286,35 @@ async function switchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
     // Активируем выбранную вкладку
-    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
-    document.getElementById(`${tabName}-tab`).classList.add('active');
+    const tabBtn = document.querySelector(`[data-tab="${tabName}"]`);
+    const tabContent = document.getElementById(`${tabName}-tab`);
+    
+    if (tabBtn) tabBtn.classList.add('active');
+    if (tabContent) tabContent.classList.add('active');
+    
+    // Показываем/скрываем кнопку покупки судна
+    const buyShipFixed = document.getElementById('buy-ship-fixed');
+    if (buyShipFixed) {
+        if (tabName === 'ships') {
+            buyShipFixed.style.display = 'block';
+        } else {
+            buyShipFixed.style.display = 'none';
+        }
+    }
 }
 
 function updateUI() {
     // Обновляем монеты
-    document.getElementById('coins').textContent = `💰 ${currentUser.coins || 0}`;
-    document.getElementById('username').textContent = currentUser.username;
+    const coinsEl = document.getElementById('coins');
+    if (coinsEl) {
+        coinsEl.textContent = (currentUser.coins || 0).toLocaleString();
+    }
+    
+    // Обновляем имя пользователя
+    const usernameEl = document.getElementById('username');
+    if (usernameEl) {
+        usernameEl.textContent = currentUser.username || 'Игрок';
+    }
     
     // Обновляем фото профиля
     const userPhotoElement = document.getElementById('user-photo');
@@ -296,59 +333,229 @@ function updateUI() {
 
     // Обновляем статистику флота
     renderFleetStats();
+    
+    // Показываем/скрываем кнопку покупки судна
+    const buyShipFixed = document.getElementById('buy-ship-fixed');
+    if (buyShipFixed) {
+        const activeTab = document.querySelector('.tab-btn.active');
+        if (activeTab && activeTab.dataset.tab === 'ships') {
+            buyShipFixed.style.display = 'block';
+        } else {
+            buyShipFixed.style.display = 'none';
+        }
+    }
 }
 
 function renderShips() {
     const shipsList = document.getElementById('ships-list');
+    if (!shipsList) return;
     
     if (ships.length === 0) {
         shipsList.innerHTML = '<div class="loading">У вас пока нет судов. Купите первое судно!</div>';
         return;
     }
 
-    shipsList.innerHTML = ships.map(ship => `
-        <div class="ship-card" onclick="openShipModal('${ship.id}')">
-            <h3>${ship.name}</h3>
-            <div class="ship-info">
-                <div class="stat">
-                    <span>Тип:</span>
-                    <span>${getShipTypeName(ship.type)}</span>
+    shipsList.innerHTML = ships.map(ship => {
+        const shipTypeName = getShipTypeName(ship.type);
+        let shipIcon = '';
+        
+        // Получаем иконку судна
+        if (ship.type === 'tanker' && window.ShipIcons) {
+            shipIcon = window.ShipIcons.getTankerIcon(56);
+        } else if (ship.type === 'cargo' && window.ShipIcons) {
+            shipIcon = window.ShipIcons.getCargoShipIcon(56);
+        } else if (ship.type === 'supply' && window.ShipIcons) {
+            shipIcon = window.ShipIcons.getSupplyShipIcon(56);
+        }
+        
+        // Определяем цвет прогресс-бара для топлива
+        const fuelPercent = (ship.fuel / ship.maxFuel) * 100;
+        let fuelColor = 'green';
+        if (fuelPercent < 20) fuelColor = 'red';
+        else if (fuelPercent < 50) fuelColor = 'orange';
+        
+        // Определяем цвет прогресс-бара для здоровья
+        const healthPercent = (ship.health / ship.maxHealth) * 100;
+        let healthColor = 'green';
+        if (healthPercent < 30) healthColor = 'red';
+        else if (healthPercent < 70) healthColor = 'orange';
+        
+        // Иконка груза
+        let cargoIcon = '';
+        if (ship.cargo) {
+            const cargoType = ship.cargo.type;
+            if (cargoType === 'oil' && window.CargoIcons) {
+                cargoIcon = window.CargoIcons.getOilIcon(32);
+            } else if (cargoType === 'materials' && window.CargoIcons) {
+                cargoIcon = window.CargoIcons.getMaterialsIcon(32);
+            } else if (cargoType === 'provisions' && window.CargoIcons) {
+                cargoIcon = window.CargoIcons.getProvisionIcon(32);
+            }
+        }
+        
+        return `
+            <div class="ship-card" onclick="openShipModal('${ship.id}')">
+                <div class="ship-card-header">
+                    <div class="ship-card-info">
+                        <div class="ship-icon-wrapper">
+                            ${shipIcon}
+                        </div>
+                        <div class="ship-card-title">
+                            <h3>${ship.name}</h3>
+                            <span class="ship-type">${shipTypeName}</span>
+                        </div>
+                    </div>
+                    ${ship.cargo ? '<div class="cargo-badge">Загружен</div>' : ''}
                 </div>
-                <div class="stat">
-                    <span>Порт:</span>
-                    <span>${getPortName(ship.currentPortId)}</span>
+                <div class="ship-card-body">
+                    <div class="ship-location">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                            <circle cx="12" cy="10" r="3"/>
+                        </svg>
+                        <span>${getPortName(ship.currentPortId)}</span>
+                    </div>
+                    <div class="progress-section">
+                        <div class="progress-label">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 3h18v18H3zM12 8v8m-4-4h8"/>
+                            </svg>
+                            <span>Топливо</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill ${fuelColor}" style="width: ${fuelPercent}%"></div>
+                        </div>
+                        <div class="progress-text">${ship.fuel}/${ship.maxFuel}</div>
+                    </div>
+                    <div class="progress-section">
+                        <div class="progress-label">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                            </svg>
+                            <span>Здоровье</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill ${healthColor}" style="width: ${healthPercent}%"></div>
+                        </div>
+                        <div class="progress-text">${ship.health}/${ship.maxHealth}</div>
+                    </div>
+                    ${ship.cargo ? `
+                        <div class="ship-cargo">
+                            <div class="cargo-icon-wrapper">
+                                ${cargoIcon}
+                            </div>
+                            <div class="cargo-info">
+                                Груз: <span class="cargo-name">${getCargoName(ship.cargo.type)}</span> (${ship.cargo.amount} ед.)
+                            </div>
+                        </div>
+                    ` : ''}
+                    ${ship.isTraveling ? '<div style="margin-top: 0.5rem; padding: 0.5rem; background: #fff3e0; border-radius: 0.5rem; text-align: center; color: #f57c00;">⏳ В пути...</div>' : ''}
                 </div>
-                <div class="stat">
-                    <span>Нефть:</span>
-                    <span>${ship.fuel}/${ship.maxFuel}</span>
-                </div>
-                <div class="stat">
-                    <span>Здоровье:</span>
-                    <span>${ship.health}/${ship.maxHealth}</span>
-                </div>
-                <div class="stat">
-                    <span>Груз:</span>
-                    <span>${ship.cargo ? getCargoName(ship.cargo.type) + ' (' + ship.cargo.amount + ')' : 'Пусто'}</span>
-                </div>
-                ${ship.isTraveling ? '<div class="stat"><span>⏳ В пути...</span></div>' : ''}
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function renderPorts() {
     const portsList = document.getElementById('ports-list');
-    portsList.innerHTML = ports.map(port => `
-        <div class="port-card" onclick="openPortModal('${port.id}')">
-            <h3>${port.name}</h3>
-            <div class="port-info">
-                <div class="stat">
-                    <span>Грузы доступны:</span>
-                    <span>${port.availableCargo.length}</span>
+    if (!portsList) return;
+    
+    portsList.innerHTML = ports.map(port => {
+        // Получаем иконку завода
+        let factoryIcon = '';
+        if (port.name.includes('Нефтяной') && window.FactoryIcons) {
+            factoryIcon = window.FactoryIcons.getOilFactoryIcon(80);
+        } else if (port.name.includes('Провизионный') && window.FactoryIcons) {
+            factoryIcon = window.FactoryIcons.getProvisionFactoryIcon(80);
+        } else if (port.name.includes('Материалов') && window.FactoryIcons) {
+            factoryIcon = window.FactoryIcons.getMaterialFactoryIcon(80);
+        }
+        
+        // Получаем правила генерации
+        const rules = PORT_GENERATION_RULES[port.name];
+        
+        // Грузы, доступные для погрузки (генерируемые)
+        const loadableCargo = port.availableCargo.filter(cargo => 
+            rules && rules.generates === cargo.type
+        );
+        
+        // Грузы, которые требуются для генерации
+        const requiredCargo = rules ? Object.keys(rules.requires || {}) : [];
+        
+        // Функция для получения иконки груза
+        const getCargoIconHTML = (cargoType) => {
+            if (cargoType === 'oil' && window.CargoIcons) {
+                return window.CargoIcons.getOilIcon(20);
+            } else if (cargoType === 'materials' && window.CargoIcons) {
+                return window.CargoIcons.getMaterialsIcon(20);
+            } else if (cargoType === 'provisions' && window.CargoIcons) {
+                return window.CargoIcons.getProvisionIcon(20);
+            }
+            return '';
+        };
+        
+        return `
+            <div class="port-card" onclick="openPortModal('${port.id}')">
+                <div class="port-card-header">
+                    <div class="port-icon-wrapper">
+                        ${factoryIcon}
+                    </div>
+                    <div class="port-info">
+                        <h3>${port.name}</h3>
+                        <p>Морской порт</p>
+                    </div>
                 </div>
+                ${loadableCargo.length > 0 ? `
+                    <div class="port-cargo-section">
+                        <div class="port-cargo-label green">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                                <line x1="12" y1="22.08" x2="12" y2="12"/>
+                            </svg>
+                            <span>Доступные грузы:</span>
+                        </div>
+                        <div class="port-cargo-list">
+                            ${loadableCargo.map(cargo => `
+                                <div class="cargo-chip available">
+                                    <div class="cargo-chip-icon">
+                                        ${getCargoIconHTML(cargo.type)}
+                                    </div>
+                                    <span>${getCargoName(cargo.type)}</span>
+                                    <span class="cargo-chip-amount">${cargo.amount}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+                ${requiredCargo.length > 0 ? `
+                    <div class="port-cargo-section">
+                        <div class="port-cargo-label orange">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                                <line x1="12" y1="22.08" x2="12" y2="12"/>
+                            </svg>
+                            <span>Требуемые грузы:</span>
+                        </div>
+                        <div class="port-cargo-list">
+                            ${requiredCargo.map(cargoType => {
+                                const cargo = port.availableCargo.find(c => c.type === cargoType);
+                                return `
+                                    <div class="cargo-chip required">
+                                        <div class="cargo-chip-icon">
+                                            ${getCargoIconHTML(cargoType)}
+                                        </div>
+                                        <span>${getCargoName(cargoType)}</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                ` : ''}
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // Статистика во вкладке "Флот"
@@ -363,6 +570,7 @@ function renderFleetStats() {
 
     // Считаем суммарные показатели по флоту
     let totalDistance = 0;
+    let totalTrips = 0;
     let totalProfit = 0;
     let totalFuelCost = 0;
     let totalCargoMoved = 0;
@@ -371,7 +579,7 @@ function renderFleetStats() {
     const cardsHtml = ships.map(ship => {
         const purchasePrice = ship.purchasePrice || 0;
         const totalDistanceNm = ship.totalDistanceNm || 0;
-        const totalTrips = ship.totalTrips || 0;
+        const totalTripsShip = ship.totalTrips || 0;
         const totalCargoMovedShip = ship.totalCargoMoved || 0;
         const totalProfitShip = ship.totalProfit || 0;
         const totalFuelCostShip = ship.totalFuelCost || 0;
@@ -382,35 +590,134 @@ function renderFleetStats() {
         const totalCostsShip = purchasePrice + totalFuelCostShip + totalCargoCostShip + totalRepairCostShip + totalTowCostShip;
 
         totalDistance += totalDistanceNm;
+        totalTrips += totalTripsShip;
         totalProfit += totalProfitShip;
         totalFuelCost += totalFuelCostShip;
         totalCargoMoved += totalCargoMovedShip;
         totalShipCosts += totalCostsShip;
 
+        // Получаем иконку судна
+        let shipIcon = '';
+        if (ship.type === 'tanker' && window.ShipIcons) {
+            shipIcon = window.ShipIcons.getTankerIcon(48);
+        } else if (ship.type === 'cargo' && window.ShipIcons) {
+            shipIcon = window.ShipIcons.getCargoShipIcon(48);
+        } else if (ship.type === 'supply' && window.ShipIcons) {
+            shipIcon = window.ShipIcons.getSupplyShipIcon(48);
+        }
+
         return `
-            <div class="fleet-card">
-                <h3>${ship.name} (${getShipTypeName(ship.type)})</h3>
-                <div class="stat-row"><span>Текущий порт:</span><span>${getPortName(ship.currentPortId)}</span></div>
-                <div class="stat-row"><span>Пройдено миль:</span><span>${totalDistanceNm}</span></div>
-                <div class="stat-row"><span>Рейсов совершено:</span><span>${totalTrips}</span></div>
-                <div class="stat-row"><span>Перевезено груза (ед.):</span><span>${totalCargoMovedShip}</span></div>
-                <div class="stat-row"><span>Доход от рейсов (чистая прибыль):</span><span>💰 ${totalProfitShip}</span></div>
-                <div class="stat-row"><span>Потрачено на топливо:</span><span>💰 ${totalFuelCostShip}</span></div>
-                <div class="stat-row"><span>Потрачено на ремонт:</span><span>💰 ${totalRepairCostShip}</span></div>
-                <div class="stat-row"><span>Потрачено на буксировку:</span><span>💰 ${totalTowCostShip}</span></div>
-                <div class="stat-row"><span>Покупка + все расходы:</span><span>💰 ${totalCostsShip}</span></div>
+            <div class="fleet-ship-card">
+                <div class="fleet-ship-header">
+                    <div class="fleet-ship-icon">
+                        ${shipIcon}
+                    </div>
+                    <div class="fleet-ship-info">
+                        <h4>${ship.name}</h4>
+                        <p>${getShipTypeName(ship.type)}</p>
+                    </div>
+                </div>
+                <div class="fleet-ship-stats">
+                    <div class="fleet-stat-row">
+                        <span class="fleet-stat-label">Расстояние пройдено:</span>
+                        <span class="fleet-stat-value">${totalDistanceNm.toLocaleString()} км</span>
+                    </div>
+                    <div class="fleet-stat-row">
+                        <span class="fleet-stat-label">Количество рейсов:</span>
+                        <span class="fleet-stat-value">${totalTripsShip}</span>
+                    </div>
+                    <div class="fleet-stat-row">
+                        <span class="fleet-stat-label">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                            </svg>
+                            Груза перевезено:
+                        </span>
+                        <span class="fleet-stat-value">${totalCargoMovedShip} ед.</span>
+                    </div>
+                    <div class="fleet-stat-row fleet-stat-divider">
+                        <span class="fleet-stat-label">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="1" x2="12" y2="23"/>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                            </svg>
+                            Прибыль:
+                        </span>
+                        <span class="fleet-stat-value" style="color: #16a34a;">💰 ${totalProfitShip.toLocaleString()}</span>
+                    </div>
+                </div>
+                <div class="fleet-expenses">
+                    <div class="fleet-expenses-title">Затраты:</div>
+                    <div class="fleet-expenses-grid">
+                        <div class="fleet-expense-item">
+                            <div class="fleet-expense-label">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 3h18v18H3zM12 8v8m-4-4h8"/>
+                                </svg>
+                                Топливо:
+                            </div>
+                            <div class="fleet-expense-value">💰 ${totalFuelCostShip}</div>
+                        </div>
+                        <div class="fleet-expense-item">
+                            <div class="fleet-expense-label">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                </svg>
+                                Груз:
+                            </div>
+                            <div class="fleet-expense-value">💰 ${totalCargoCostShip}</div>
+                        </div>
+                        <div class="fleet-expense-item">
+                            <div class="fleet-expense-label">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                                </svg>
+                                Ремонт:
+                            </div>
+                            <div class="fleet-expense-value">💰 ${totalRepairCostShip}</div>
+                        </div>
+                        <div class="fleet-expense-item">
+                            <div class="fleet-expense-label">Буксировка:</div>
+                            <div class="fleet-expense-value">💰 ${totalTowCostShip}</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
     }).join('');
 
     const summaryHtml = `
-        <div class="fleet-summary">
-            <div><strong>Всего судов:</strong> ${ships.length}</div>
-            <div><strong>Суммарное расстояние:</strong> ${totalDistance} миль</div>
-            <div><strong>Суммарно перевезено груза:</strong> ${totalCargoMoved} ед.</div>
-            <div><strong>Суммарные расходы на топливо:</strong> 💰 ${totalFuelCost}</div>
-            <div><strong>Суммарная чистая прибыль от рейсов:</strong> 💰 ${totalProfit}</div>
-            <div><strong>Суммарные затраты на суда (покупка+расходы):</strong> 💰 ${totalShipCosts}</div>
+        <div class="fleet-summary-card">
+            <div class="fleet-summary-title">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 21h18"/>
+                    <path d="M5 21V7l8-4v18"/>
+                    <path d="M19 21V11l-6-4"/>
+                </svg>
+                Общая статистика флота
+            </div>
+            <div class="fleet-summary-grid">
+                <div class="fleet-summary-item">
+                    <div class="fleet-summary-label">Дистанция</div>
+                    <div class="fleet-summary-value">${totalDistance.toLocaleString()} км</div>
+                </div>
+                <div class="fleet-summary-item">
+                    <div class="fleet-summary-label">Рейсов</div>
+                    <div class="fleet-summary-value">${totalTrips}</div>
+                </div>
+                <div class="fleet-summary-item">
+                    <div class="fleet-summary-label">Груза перевезено</div>
+                    <div class="fleet-summary-value">${totalCargoMoved} ед.</div>
+                </div>
+                <div class="fleet-summary-item">
+                    <div class="fleet-summary-label">Прибыль</div>
+                    <div class="fleet-summary-value" style="color: #86efac;">💰 ${totalProfit.toLocaleString()}</div>
+                </div>
+            </div>
+            <div class="fleet-summary-total">
+                <div class="fleet-summary-total-label">Общие затраты</div>
+                <div class="fleet-summary-total-value">💰 ${totalShipCosts.toLocaleString()}</div>
+            </div>
         </div>
     `;
 
@@ -437,7 +744,11 @@ async function openShipModal(shipId) {
     const title = document.getElementById('modal-title');
     const body = document.getElementById('modal-body');
 
+    if (!modal || !title || !body) return;
+
     title.textContent = ship.name;
+    modal.classList.add('active');
+    modal.style.display = 'flex';
     
     if (ship.isTraveling) {
         const endTime = ship.travelEndTime ? new Date(ship.travelEndTime) : null;
@@ -461,19 +772,88 @@ async function openShipModal(shipId) {
             }
         }, 5000);
     } else {
+        // Определяем цвет прогресс-бара для топлива
+        const fuelPercent = (ship.fuel / ship.maxFuel) * 100;
+        let fuelColor = 'green';
+        if (fuelPercent < 20) fuelColor = 'red';
+        else if (fuelPercent < 50) fuelColor = 'orange';
+        
+        // Определяем цвет прогресс-бара для здоровья
+        const healthPercent = (ship.health / ship.maxHealth) * 100;
+        let healthColor = 'green';
+        if (healthPercent < 30) healthColor = 'red';
+        else if (healthPercent < 70) healthColor = 'orange';
+        
         body.innerHTML = `
-            <div class="ship-info">
-                <div class="stat"><span>Тип:</span><span>${getShipTypeName(ship.type)}</span></div>
-                <div class="stat"><span>Текущий порт:</span><span>${getPortName(ship.currentPortId)}</span></div>
-                <div class="stat"><span>Нефть:</span><span>${ship.fuel}/${ship.maxFuel}</span></div>
-                <div class="stat"><span>Здоровье:</span><span>${ship.health}/${ship.maxHealth}</span></div>
-                <div class="stat"><span>Экипаж:</span><span>Уровень ${ship.crewLevel}</span></div>
+            <div class="modal-section">
+                <div class="stat" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="color: var(--gray-600);">Тип судна:</span>
+                    <span style="font-weight: 600; color: var(--gray-900);">${getShipTypeName(ship.type)}</span>
+                </div>
+                <div class="stat" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="color: var(--gray-600); display: flex; align-items: center; gap: 0.25rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                            <circle cx="12" cy="10" r="3"/>
+                        </svg>
+                        Текущий порт:
+                    </span>
+                    <span style="font-weight: 600; color: var(--gray-900);">${getPortName(ship.currentPortId)}</span>
+                </div>
+                <div class="stat" style="display: flex; justify-content: space-between;">
+                    <span style="color: var(--gray-600); display: flex; align-items: center; gap: 0.25rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        Экипаж:
+                    </span>
+                    <span style="font-weight: 600; color: var(--gray-900);">20 чел.</span>
+                </div>
+            </div>
+
+            <div class="progress-section">
+                <div class="progress-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
+                        <path d="M3 3h18v18H3zM12 8v8m-4-4h8"/>
+                    </svg>
+                    <span>Топливо</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill ${fuelColor}" style="width: ${fuelPercent}%"></div>
+                </div>
+                <div class="progress-text">${ship.fuel}/${ship.maxFuel}</div>
+            </div>
+
+            <div class="progress-section">
+                <div class="progress-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    </svg>
+                    <span>Здоровье</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill ${healthColor}" style="width: ${healthPercent}%"></div>
+                </div>
+                <div class="progress-text">${ship.health}/${ship.maxHealth}</div>
             </div>
             
             ${ship.cargo ? `
-                <div style="margin: 15px 0;">
-                    <h4>Текущий груз: ${getCargoName(ship.cargo.type)} (${ship.cargo.amount})</h4>
-                    <button class="btn-primary" onclick="unloadCargo('${ship.id}')">Выгрузить груз в порт</button>
+                <div class="modal-section" style="border: 1px solid var(--gray-200);">
+                    <div class="modal-section-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        </svg>
+                        <span>Текущий груз</span>
+                    </div>
+                    <div style="background: var(--orange-50); padding: 0.75rem; border-radius: var(--radius-lg); margin-bottom: 0.5rem;">
+                        <div style="font-size: 0.875rem; color: var(--gray-700);">
+                            <strong>${getCargoName(ship.cargo.type)}</strong> (${ship.cargo.amount} ед.)
+                        </div>
+                    </div>
+                    <button class="btn-primary btn-orange" onclick="unloadCargo('${ship.id}')">Выгрузить груз</button>
                 </div>
             ` : (() => {
                 // Получаем порт и правила генерации
@@ -491,31 +871,35 @@ async function openShipModal(shipId) {
                 // Если нет грузов для погрузки, не показываем секцию
                 if (loadableCargo.length === 0) return '';
                 
+                // Функция для получения иконки груза
+                const getCargoIconHTML = (cargoType) => {
+                    if (cargoType === 'oil' && window.CargoIcons) {
+                        return window.CargoIcons.getOilIcon(24);
+                    } else if (cargoType === 'materials' && window.CargoIcons) {
+                        return window.CargoIcons.getMaterialsIcon(24);
+                    } else if (cargoType === 'provisions' && window.CargoIcons) {
+                        return window.CargoIcons.getProvisionIcon(24);
+                    }
+                    return '';
+                };
+                
                 return `
-                    <div style="margin: 15px 0;">
-                        <h4>Загрузить груз:</h4>
-                        <div class="cargo-selector">
+                    <div class="modal-section" style="border: 1px solid var(--gray-200);">
+                        <div class="modal-section-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                            </svg>
+                            <span>Загрузить груз</span>
+                        </div>
+                        <div class="cargo-selection-list">
                             ${loadableCargo.map(cargo => {
-                                const maxAvailable = Math.min(cargo.amount, 100); // Максимум 100 единиц или доступное количество
+                                const maxAvailable = Math.min(cargo.amount, 100);
+                                const cargoIcon = getCargoIconHTML(cargo.type);
                                 return `
-                                    <div class="cargo-option" style="margin-bottom: 10px;">
-                                        <div><strong>${getCargoName(cargo.type)}</strong> - Доступно: ${cargo.amount} - 💰 ${cargo.price || 'Бесплатно'}/ед.</div>
-                                        <div style="display: flex; gap: 10px; margin-top: 5px; align-items: center;">
-                                            <input type="number" 
-                                                   id="cargo-amount-${cargo.type}-${ship.id}" 
-                                                   min="1" 
-                                                   max="${maxAvailable}" 
-                                                   value="${maxAvailable > 0 ? 1 : 0}" 
-                                                   style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;"
-                                                   ${maxAvailable === 0 ? 'disabled' : ''}>
-                                            <span>шт. (макс. ${maxAvailable})</span>
-                                            <button class="btn-primary" 
-                                                    onclick="confirmLoadCargo('${ship.id}', '${cargo.type}', ${cargo.amount}, ${cargo.price || 0})"
-                                                    ${maxAvailable === 0 ? 'disabled' : ''}>
-                                                Загрузить
-                                            </button>
-                                        </div>
-                                    </div>
+                                    <button class="cargo-selection-item" onclick="selectCargoForLoading('${ship.id}', '${cargo.type}', ${cargo.amount}, ${cargo.price || 0}, ${maxAvailable})">
+                                        <span>${getCargoName(cargo.type)}</span>
+                                        <span class="cargo-selection-amount">${cargo.amount} ед.</span>
+                                    </button>
                                 `;
                             }).join('')}
                         </div>
@@ -523,16 +907,22 @@ async function openShipModal(shipId) {
                 `;
             })()}
             
-            <div style="margin: 15px 0;">
-                <h4>Отправить в порт:</h4>
-                <div class="port-selector" id="port-selector-${ship.id}">
+            <div class="modal-section" style="border: 1px solid var(--gray-200);">
+                <div class="modal-section-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    <span>Отправить в порт</span>
+                </div>
+                <div class="port-selection-list" id="port-selector-${ship.id}">
                     ${ports.filter(p => p.id !== ship.currentPortId).map(port => `
-                        <div class="port-option" 
+                        <button class="port-selection-item" 
                              data-ship-id="${ship.id}" 
                              data-port-id="${port.id}" 
                              data-port-name="${port.name.replace(/"/g, '&quot;')}">
-                            ${port.name} (💰 ${calculateTravelCost(ship, port)} - рассчитывается при отправке)
-                        </div>
+                            ${port.name}
+                        </button>
                     `).join('')}
                 </div>
             </div>
@@ -548,10 +938,15 @@ async function openShipModal(shipId) {
                 
                 if (!canRefuel) {
                     return `
-                        <div style="margin: 15px 0; padding: 10px; background: #fff3e0; border-radius: 5px;">
-                            <h4>🛢️ Бункеровка (заправка топливом):</h4>
-                            <p style="color: #ff9800;">Бункеровка возможна только в портах, где генерируется нефть.</p>
-                            <p style="font-size: 0.9em; color: #666;">Текущий порт: ${port.name}</p>
+                        <div class="modal-section" style="border: 1px solid var(--orange-200); background: var(--orange-50);">
+                            <div class="modal-section-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
+                                    <path d="M3 3h18v18H3zM12 8v8m-4-4h8"/>
+                                </svg>
+                                <span>Бункеровка (заправка топливом)</span>
+                            </div>
+                            <p style="color: var(--orange-700); font-size: 0.875rem; margin-bottom: 0.5rem;">Бункеровка возможна только в портах, где генерируется нефть.</p>
+                            <p style="font-size: 0.75rem; color: var(--gray-600);">Текущий порт: ${port.name}</p>
                         </div>
                     `;
                 }
@@ -560,43 +955,12 @@ async function openShipModal(shipId) {
                 const fuelNeeded = ship.maxFuel - ship.fuel;
                 
                 return `
-                    <div style="margin: 15px 0;">
-                        <h4>🛢️ Бункеровка (заправка топливом):</h4>
-                        <div class="stat">
-                            <span>Текущее топливо:</span>
-                            <span>${ship.fuel}/${ship.maxFuel}</span>
-                        </div>
-                        ${availableOil && availableOil.amount > 0 ? (() => {
-                            const maxAvailable = Math.min(availableOil.amount, fuelNeeded);
-                            const pricePerUnit = availableOil.price || 0;
-                            return `
-                                <div class="cargo-option" style="margin-bottom: 10px;">
-                                    <div><strong>Нефть</strong> - Доступно: ${availableOil.amount} - 💰 ${pricePerUnit}/ед.</div>
-                                    <div style="display: flex; gap: 10px; margin-top: 5px; align-items: center;">
-                                        <input type="number" 
-                                               id="refuel-amount-${ship.id}" 
-                                               min="1" 
-                                               max="${maxAvailable}" 
-                                               value="${maxAvailable > 0 ? 1 : 0}" 
-                                               style="width: 80px; padding: 5px; border: 1px solid #ccc; border-radius: 4px;"
-                                               ${maxAvailable === 0 ? 'disabled' : ''}
-                                               onchange="updateRefuelPriceFromPort('${ship.id}', ${pricePerUnit})">
-                                        <span>шт. (макс. ${maxAvailable}, нужно ${fuelNeeded})</span>
-                                        <span id="refuel-price-${ship.id}" style="font-weight: bold;">💰 ${pricePerUnit}</span>
-                                        <button class="btn-primary" 
-                                                onclick="confirmRefuelFromPort('${ship.id}', ${availableOil.amount}, ${fuelNeeded}, ${pricePerUnit})"
-                                                ${maxAvailable === 0 ? 'disabled' : ''}>
-                                            Заправить
-                                        </button>
-                                    </div>
-                                </div>
-                            `;
-                        })() : `
-                            <div style="padding: 10px; background: #f0f0f0; border-radius: 5px;">
-                                В этом порту нет нефти для заправки
-                            </div>
-                        `}
-                    </div>
+                    <button class="btn-primary" onclick="openRefuelModal('${ship.id}')" style="width: 100%;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.25rem; height: 1.25rem;">
+                            <path d="M3 3h18v18H3zM12 8v8m-4-4h8"/>
+                        </svg>
+                        Букеровка (заправить топливом)
+                    </button>
                 `;
             })() : ''}
             
@@ -607,9 +971,16 @@ async function openShipModal(shipId) {
                 
                 if (isInVladivostok) {
                     return `
-                        <div style="margin: 15px 0; padding: 10px; background: #ffebee; border-radius: 5px;">
-                            <h4>⚠️ Низкий уровень топлива</h4>
-                            <p style="color: #d32f2f;">Топливо на исходе (${ship.fuel}/${ship.maxFuel}). Заправьте судно нефтью в порту "Нефтяной завод".</p>
+                        <div class="modal-section" style="border: 1px solid var(--red-200); background: var(--red-50);">
+                            <div class="modal-section-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                    <line x1="12" y1="9" x2="12" y2="13"/>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                </svg>
+                                <span>Низкий уровень топлива</span>
+                            </div>
+                            <p style="color: var(--red-700); font-size: 0.875rem;">Топливо на исходе (${ship.fuel}/${ship.maxFuel}). Заправьте судно нефтью в порту "Нефтяной завод".</p>
                         </div>
                     `;
                 }
@@ -622,50 +993,48 @@ async function openShipModal(shipId) {
                 const estimatedCost = 500 + 1000; // Базовая + примерная доплата за расстояние
                 
                 return `
-                    <div style="margin: 15px 0; padding: 10px; background: #fff3e0; border-radius: 5px; border: 2px solid #ff9800;">
-                        <h4>🚢 Буксировка судна</h4>
-                        <p style="color: #f57c00; margin-bottom: 10px;">
-                            <strong>Топливо на исходе!</strong> (${ship.fuel}/${ship.maxFuel})
-                        </p>
-                        <p style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
-                            Судно можно отбуксировать в порт "Нефтяной завод" для заправки.
-                        </p>
-                        <p style="font-size: 0.9em; color: #666; margin-bottom: 15px;">
-                            Примерная стоимость: <strong>💰 ~${estimatedCost}</strong> монет (точная стоимость будет рассчитана на сервере)
-                        </p>
-                        <button class="btn-primary" 
-                                style="background: #ff9800; border-color: #f57c00;"
-                                data-ship-id="${ship.id}" 
-                                data-port-name="${port ? port.name.replace(/"/g, '&quot;') : 'неизвестный порт'}" 
-                                data-estimated-cost="${estimatedCost}"
-                                id="tow-ship-btn-${ship.id}">
-                            Отбуксировать в "Нефтяной завод"
-                        </button>
-                    </div>
+                    <button class="btn-primary btn-red" 
+                            data-ship-id="${ship.id}" 
+                            data-port-name="${port ? port.name.replace(/"/g, '&quot;') : 'неизвестный порт'}" 
+                            data-estimated-cost="${estimatedCost}"
+                            id="tow-ship-btn-${ship.id}"
+                            style="width: 100%;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.25rem; height: 1.25rem;">
+                            <circle cx="12" cy="5" r="3"/>
+                            <line x1="12" y1="8" x2="12" y2="16"/>
+                            <path d="M5 12h14"/>
+                            <path d="M8 12l-2 2 2 2"/>
+                            <path d="M16 12l2 2-2 2"/>
+                        </svg>
+                        Буксировка (💰 1000)
+                    </button>
                 `;
             })() : ''}
             
             ${ship.health < ship.maxHealth ? `
-                <button class="btn-secondary" onclick="repairShip('${ship.id}')">Починить судно</button>
+                <button class="btn-primary btn-green" onclick="repairShip('${ship.id}')" style="width: 100%;">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.25rem; height: 1.25rem;">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                    </svg>
+                    Починить судно (💰 500)
+                </button>
             ` : ''}
         `;
     }
 
-    modal.style.display = 'block';
-    
     // Добавляем обработчики событий для кнопок отправки в порт (через небольшую задержку, чтобы DOM успел обновиться)
     setTimeout(() => {
         const portSelector = document.getElementById(`port-selector-${ship.id}`);
         if (portSelector) {
             // Удаляем старые обработчики (если есть) - клонируем элементы для удаления обработчиков
-            const oldOptions = portSelector.querySelectorAll('.port-option');
+            const oldOptions = portSelector.querySelectorAll('.port-selection-item, .port-option');
             oldOptions.forEach(option => {
                 const newOption = option.cloneNode(true);
                 option.parentNode.replaceChild(newOption, option);
             });
             
             // Добавляем новые обработчики
-            const portOptions = portSelector.querySelectorAll('.port-option');
+            const portOptions = portSelector.querySelectorAll('.port-selection-item, .port-option');
             portOptions.forEach(option => {
                 option.addEventListener('click', handlePortOptionClick);
             });
@@ -686,6 +1055,131 @@ async function openShipModal(shipId) {
     }, 0);
 }
 
+// Функция открытия модального окна бункеровки
+function openRefuelModal(shipId) {
+    const ship = ships.find(s => s.id === shipId);
+    if (!ship) return;
+    
+    const port = ports.find(p => p.id === ship.currentPortId);
+    if (!port) return;
+    
+    const rules = PORT_GENERATION_RULES[port.name];
+    const canRefuel = rules && rules.generates === 'oil';
+    
+    if (!canRefuel) {
+        showError('Бункеровка возможна только в портах, где генерируется нефть');
+        return;
+    }
+    
+    const availableOil = port.availableCargo.find(cargo => cargo.type === 'oil');
+    const fuelNeeded = ship.maxFuel - ship.fuel;
+    
+    if (!availableOil || availableOil.amount === 0) {
+        showError('В этом порту нет нефти для заправки');
+        return;
+    }
+    
+    const maxAvailable = Math.min(availableOil.amount, fuelNeeded);
+    const pricePerUnit = availableOil.price || 0;
+    const initialAmount = maxAvailable;
+    const initialCost = initialAmount * pricePerUnit;
+    
+    // Создаем модальное окно для бункеровки
+    const refuelModal = document.createElement('div');
+    refuelModal.className = 'modal active';
+    refuelModal.style.display = 'flex';
+    refuelModal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-header-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.5rem; height: 1.5rem;">
+                        <path d="M3 3h18v18H3zM12 8v8m-4-4h8"/>
+                    </svg>
+                    <span>Бункеровка топлива</span>
+                </div>
+                <span class="modal-close" onclick="closeRefuelModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <div class="stat" style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span style="color: var(--gray-600);">Текущее топливо:</span>
+                        <span style="font-weight: 600; color: var(--gray-900);">${ship.fuel}/${ship.maxFuel}</span>
+                    </div>
+                    <div class="stat" style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--gray-600);">Нужно топлива:</span>
+                        <span style="font-weight: 600; color: var(--primary-blue);">${fuelNeeded}</span>
+                    </div>
+                </div>
+                <div class="modal-section">
+                    <label style="display: block; font-size: 0.875rem; font-weight: 500; color: var(--gray-700); margin-bottom: 0.5rem;">
+                        Количество топлива: <span style="color: var(--primary-blue); font-weight: bold; font-size: 1.125rem;" id="refuel-amount-display-${shipId}">${initialAmount}</span>
+                    </label>
+                    <input type="range" 
+                           class="cargo-slider" 
+                           id="refuel-slider-${shipId}"
+                           min="0" 
+                           max="${maxAvailable}" 
+                           value="${initialAmount}"
+                           oninput="updateRefuelAmount('${shipId}', ${pricePerUnit}, ${maxAvailable})">
+                    <div class="cargo-slider-labels">
+                        <span>0</span>
+                        <span>${maxAvailable}</span>
+                    </div>
+                </div>
+                <div class="modal-section" style="background: var(--primary-blue); background: linear-gradient(to right, #dbeafe, #bfdbfe); border: 1px solid var(--primary-blue-light);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.875rem; color: var(--gray-700);">Стоимость:</span>
+                        <span style="font-size: 1.125rem; font-weight: bold; color: var(--primary-blue);" id="refuel-price-display-${shipId}">💰 ${initialCost}</span>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--gray-500); margin-top: 0.25rem;">
+                        ${pricePerUnit} монет за единицу топлива
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                    <button class="btn-secondary" onclick="closeRefuelModal()" style="flex: 1;">Отмена</button>
+                    <button class="btn-primary" 
+                            onclick="confirmRefuelFromPort('${ship.id}', ${availableOil.amount}, ${fuelNeeded}, ${pricePerUnit})"
+                            ${maxAvailable === 0 ? 'disabled' : ''}
+                            style="flex: 1;">
+                        Заправить
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(refuelModal);
+    
+    // Сохраняем ссылку на модальное окно для закрытия
+    window.currentRefuelModal = refuelModal;
+}
+
+// Обновление количества топлива при изменении слайдера
+function updateRefuelAmount(shipId, pricePerUnit, maxAmount) {
+    const slider = document.getElementById(`refuel-slider-${shipId}`);
+    const display = document.getElementById(`refuel-amount-display-${shipId}`);
+    const priceDisplay = document.getElementById(`refuel-price-display-${shipId}`);
+    
+    if (slider && display && priceDisplay) {
+        const amount = parseInt(slider.value);
+        const cost = amount * pricePerUnit;
+        display.textContent = amount;
+        priceDisplay.textContent = `💰 ${cost}`;
+    }
+}
+
+// Закрытие модального окна бункеровки
+function closeRefuelModal() {
+    if (window.currentRefuelModal) {
+        window.currentRefuelModal.remove();
+        window.currentRefuelModal = null;
+    }
+}
+
+window.openRefuelModal = openRefuelModal;
+window.updateRefuelAmount = updateRefuelAmount;
+window.closeRefuelModal = closeRefuelModal;
+
 async function openPortModal(portId) {
     const port = ports.find(p => p.id === portId);
     if (!port) return;
@@ -694,7 +1188,11 @@ async function openPortModal(portId) {
     const title = document.getElementById('port-modal-title');
     const body = document.getElementById('port-modal-body');
 
+    if (!modal || !title || !body) return;
+
     title.textContent = port.name;
+    modal.classList.add('active');
+    modal.style.display = 'flex';
     
     // Получаем правила генерации для порта
     const rules = PORT_GENERATION_RULES[port.name];
@@ -705,7 +1203,7 @@ async function openPortModal(portId) {
     );
     
     // Грузы, которые требуются для генерации (можно выгрузить)
-    const requiredCargo = rules ? Object.keys(rules.requires) : [];
+    const requiredCargo = rules ? Object.keys(rules.requires || {}) : [];
     const requiredCargoInfo = requiredCargo.map(cargoType => {
         const cargo = port.availableCargo.find(c => c.type === cargoType);
         return {
@@ -715,59 +1213,132 @@ async function openPortModal(portId) {
         };
     });
     
+    // Функция для получения иконки груза
+    const getCargoIconHTML = (cargoType) => {
+        if (cargoType === 'oil' && window.CargoIcons) {
+            return window.CargoIcons.getOilIcon(24);
+        } else if (cargoType === 'materials' && window.CargoIcons) {
+            return window.CargoIcons.getMaterialsIcon(24);
+        } else if (cargoType === 'provisions' && window.CargoIcons) {
+            return window.CargoIcons.getProvisionIcon(24);
+        }
+        return '';
+    };
+    
     body.innerHTML = `
-        <div class="port-info">
-            <div style="margin-bottom: 20px;">
-                <h4>📦 Грузы доступные для погрузки:</h4>
-                ${loadableCargo.length > 0 ? loadableCargo.map(cargo => `
-                    <div class="cargo-option" style="padding: 10px; margin: 5px 0; background: #e8f5e9; border-radius: 5px;">
-                        <strong>${getCargoName(cargo.type)}</strong> - ${cargo.amount} единиц
-                        ${cargo.price ? `<span style="color: #4caf50;">💰 ${cargo.price} монет/ед.</span>` : ''}
-                    </div>
-                `).join('') : '<div style="padding: 10px; color: #999;">Нет доступных грузов для погрузки</div>'}
-            </div>
-            
-            <div style="margin-bottom: 20px;">
-                <h4>📤 Грузы требуются для генерации (можно выгрузить):</h4>
-                ${requiredCargoInfo.length > 0 ? requiredCargoInfo.map(cargo => `
-                    <div class="cargo-option" style="padding: 10px; margin: 5px 0; background: #fff3e0; border-radius: 5px;">
-                        <strong>${getCargoName(cargo.type)}</strong> - В порту: ${cargo.amount} единиц
-                        <span style="color: #ff9800;">(требуется: ${cargo.required} ед. для генерации)</span>
-                    </div>
-                `).join('') : '<div style="padding: 10px; color: #999;">Нет требуемых грузов</div>'}
-            </div>
-            
-            ${rules ? `
-                <div style="margin-top: 20px; padding: 10px; background: #f5f5f5; border-radius: 5px;">
-                    <strong>ℹ️ Правила генерации:</strong>
-                    <p>${Object.entries(rules.requires).map(([type, amount]) => 
-                        `${amount} ${getCargoName(type)}`
-                    ).join(' + ')} → 3 ${getCargoName(rules.generates)}</p>
+        ${loadableCargo.length > 0 ? `
+            <div class="modal-section" style="border: 1px solid var(--green-200);">
+                <div class="modal-section-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--green-600);">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    </svg>
+                    <span>Доступные грузы для погрузки</span>
                 </div>
-            ` : ''}
+                <div class="space-y-2">
+                    ${loadableCargo.map(cargo => `
+                        <div class="cargo-chip available" style="justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div class="cargo-chip-icon">
+                                    ${getCargoIconHTML(cargo.type)}
+                                </div>
+                                <span style="font-weight: 500;">${getCargoName(cargo.type)}</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span class="cargo-chip-amount">${cargo.amount}</span>
+                                ${cargo.price ? `
+                                    <span style="background: var(--green-600); color: white; font-size: 0.75rem; padding: 0.125rem 0.5rem; border-radius: 9999px; font-weight: 600; display: flex; align-items: center; gap: 0.25rem;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 0.75rem; height: 0.75rem;">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <path d="M12 6v12M15 9a3 3 0 1 0-6 0"/>
+                                        </svg>
+                                        ${cargo.price}
+                                    </span>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+        
+        ${requiredCargoInfo.length > 0 ? `
+            <div class="modal-section" style="border: 1px solid var(--orange-200);">
+                <div class="modal-section-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--orange-600);">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                    </svg>
+                    <span>Требуемые грузы для генерации</span>
+                </div>
+                <div class="space-y-2">
+                    ${requiredCargoInfo.map(cargo => `
+                        <div class="cargo-chip required" style="flex-direction: column; align-items: flex-start; gap: 0.5rem;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <div class="cargo-chip-icon">
+                                        ${getCargoIconHTML(cargo.type)}
+                                    </div>
+                                    <span style="font-weight: 600; font-size: 1rem;">${getCargoName(cargo.type)}</span>
+                                </div>
+                                ${cargo.amount > 0 ? `
+                                    <span style="background: var(--orange-600); color: white; font-size: 0.75rem; padding: 0.125rem 0.5rem; border-radius: 9999px; font-weight: 600; display: flex; align-items: center; gap: 0.25rem;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 0.75rem; height: 0.75rem;">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <path d="M12 6v12M15 9a3 3 0 1 0-6 0"/>
+                                        </svg>
+                                        ${port.availableCargo.find(c => c.type === cargo.type)?.price || 0}
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem;">
+                                <span style="color: var(--orange-700);">В порту:</span>
+                                <span style="font-weight: bold; background: var(--orange-200); padding: 0.125rem 0.5rem; border-radius: 0.25rem; color: var(--orange-900);">
+                                    ${cargo.amount} единиц
+                                </span>
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--orange-600);">
+                                (требуется: ${cargo.required} ед. для генерации)
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+        
+        ${rules ? `
+            <div class="modal-section" style="background: var(--primary-blue); background: linear-gradient(to right, #dbeafe, #bfdbfe); border: 1px solid var(--primary-blue-light);">
+                <div class="modal-section-title" style="color: var(--primary-blue);">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 16v-4M12 8h.01"/>
+                    </svg>
+                    <span>Правила генерации ресурсов</span>
+                </div>
+                <div style="background: white; padding: 0.75rem; border-radius: var(--radius-lg); font-size: 0.875rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                        ${Object.entries(rules.requires).map(([type, amount]) => `
+                            <span style="color: var(--gray-700);">${getCargoName(type)} (${amount})</span>
+                        `).join('<span style="color: var(--gray-400);">+</span>')}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem; color: var(--gray-400);">
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        <span style="font-weight: 600; color: var(--gray-900);">${getCargoName(rules.generates)} (3)</span>
+                    </div>
+                </div>
+                <p style="font-size: 0.75rem; color: var(--primary-blue); margin-top: 0.75rem;">
+                    Доставьте требуемые грузы для генерации новых ресурсов в этом порту
+                </p>
+            </div>
+        ` : ''}
+        
+        <div class="modal-section" style="background: var(--gray-50);">
+            <p style="font-size: 0.75rem; color: var(--gray-600); line-height: 1.6;">
+                В этом порту вы можете загружать и выгружать грузы. Перевозите грузы между портами,
+                чтобы зарабатывать деньги и развивать свой флот.
+            </p>
         </div>
     `;
-
-    modal.style.display = 'block';
     
-    // Добавляем обработчики событий для кнопок отправки в порт (через небольшую задержку, чтобы DOM успел обновиться)
-    setTimeout(() => {
-        const portSelector = document.getElementById(`port-selector-${ship.id}`);
-        if (portSelector) {
-            // Удаляем старые обработчики (если есть)
-            const oldOptions = portSelector.querySelectorAll('.port-option');
-            oldOptions.forEach(option => {
-                const newOption = option.cloneNode(true);
-                option.parentNode.replaceChild(newOption, option);
-            });
-            
-            // Добавляем новые обработчики
-            const portOptions = portSelector.querySelectorAll('.port-option');
-            portOptions.forEach(option => {
-                option.addEventListener('click', handlePortOptionClick);
-            });
-        }
-    }, 0);
+    // Обработчики уже добавлены в openShipModal
 }
 
 // Обработчик клика по опции порта
@@ -804,7 +1375,11 @@ async function confirmSendShipToPort(shipId, portId, portName) {
             showSuccess(`Судно отправлено в ${portName}!${fuelInfo}${distanceInfo}`);
             await loadUserData();
             updateUI();
-            document.getElementById('ship-modal').style.display = 'none';
+            const shipModal = document.getElementById('ship-modal');
+            if (shipModal) {
+                shipModal.classList.remove('active');
+                shipModal.style.display = 'none';
+            }
         }
     } catch (error) {
         // Ошибка уже обработана в apiRequest
@@ -830,15 +1405,23 @@ async function sendShipToPort(shipId, portId) {
 
 // Функция подтверждения загрузки груза с выбором количества
 async function confirmLoadCargo(shipId, cargoType, maxAvailable, pricePerUnit) {
-    const inputId = `cargo-amount-${cargoType}-${shipId}`;
-    const amountInput = document.getElementById(inputId);
+    // Пытаемся получить значение из слайдера
+    const sliderId = `cargo-slider-${shipId}-${cargoType}`;
+    const slider = document.getElementById(sliderId);
     
-    if (!amountInput) {
-        showError('Ошибка: поле ввода количества не найдено');
-        return;
+    let amount;
+    if (slider) {
+        amount = parseInt(slider.value);
+    } else {
+        // Fallback на старое поле ввода
+        const inputId = `cargo-amount-${cargoType}-${shipId}`;
+        const amountInput = document.getElementById(inputId);
+        if (!amountInput) {
+            showError('Ошибка: поле ввода количества не найдено');
+            return;
+        }
+        amount = parseInt(amountInput.value);
     }
-    
-    const amount = parseInt(amountInput.value);
     
     if (!amount || amount <= 0) {
         showError('Количество должно быть больше 0');
@@ -949,15 +1532,23 @@ function updateRefuelPriceFromPort(shipId, pricePerUnit) {
 
 // Функция подтверждения заправки из порта
 async function confirmRefuelFromPort(shipId, maxAvailable, fuelNeeded, pricePerUnit) {
-    const inputId = `refuel-amount-${shipId}`;
-    const amountInput = document.getElementById(inputId);
+    // Пытаемся получить значение из слайдера
+    const sliderId = `refuel-slider-${shipId}`;
+    const slider = document.getElementById(sliderId);
     
-    if (!amountInput) {
-        showError('Ошибка: поле ввода количества не найдено');
-        return;
+    let amount;
+    if (slider) {
+        amount = parseInt(slider.value);
+    } else {
+        // Fallback на старое поле ввода
+        const inputId = `refuel-amount-${shipId}`;
+        const amountInput = document.getElementById(inputId);
+        if (!amountInput) {
+            showError('Ошибка: поле ввода количества не найдено');
+            return;
+        }
+        amount = parseInt(amountInput.value);
     }
-    
-    const amount = parseInt(amountInput.value);
     
     if (!amount || amount <= 0) {
         showError('Количество должно быть больше 0');
@@ -973,6 +1564,9 @@ async function confirmRefuelFromPort(shipId, maxAvailable, fuelNeeded, pricePerU
         showError(`Недостаточно нефти в порту. Доступно: ${maxAvailable}`);
         return;
     }
+    
+    // Закрываем модальное окно бункеровки
+    closeRefuelModal();
     
     await refuelShipFromPort(shipId, amount);
 }
@@ -990,6 +1584,8 @@ async function refuelShipFromPort(shipId, amount) {
             await loadUserData();
             await loadPorts(false);
             updateUI();
+            // Закрываем модальное окно бункеровки, если открыто
+            closeRefuelModal();
             openShipModal(shipId);
         }
     } catch (error) {
@@ -1016,16 +1612,51 @@ async function confirmTowShip(shipId, currentPortName, estimatedCost) {
     const cancelBtn = document.getElementById('confirm-tow-cancel');
     const okBtn = document.getElementById('confirm-tow-ok');
     
+    if (!modal || !body || !cancelBtn || !okBtn) {
+        showError('Ошибка: модальное окно буксировки не найдено');
+        return;
+    }
+    
     body.innerHTML = `
-        <p>Отбуксировать судно <strong>"${ship.name}"</strong> из порта <strong>"${currentPortName}"</strong> в порт <strong>"Нефтяной завод"</strong>?</p>
-        <p style="margin-top: 15px;">Примерная стоимость: <strong>💰 ${estimatedCost}</strong> монет</p>
-        <p style="margin-top: 10px; color: #666; font-size: 0.9em;">После буксировки судно окажется в порту "Нефтяной завод" с нулевым топливом. Вам нужно будет заправить судно нефтью для продолжения работы.</p>
+        <p style="font-size: 0.875rem; color: var(--gray-700); margin-bottom: 1rem;">
+            Отбуксировать судно <strong>"${ship.name}"</strong> из порта <strong>"${currentPortName}"</strong> в порт <strong>"Нефтяной завод"</strong>?
+        </p>
+        <div class="modal-section" style="background: var(--yellow-50); border: 1px solid var(--yellow-200);">
+            <div style="display: flex; align-items: start; gap: 0.75rem;">
+                <div style="font-size: 1.5rem;">⚠️</div>
+                <div style="flex: 1;">
+                    <p style="font-size: 0.875rem; color: var(--gray-700); margin-bottom: 0.5rem;">
+                        С вашего баланса будет списано:
+                    </p>
+                    <p style="font-size: 1.5rem; font-weight: bold; color: var(--primary-blue); margin-bottom: 0.5rem;">
+                        💰 ${estimatedCost}
+                    </p>
+                    <p style="font-size: 0.75rem; color: var(--gray-600);">
+                        За буксировку судна в Нефтяной завод
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-section" style="background: var(--gray-50);">
+            <div style="font-size: 0.75rem; color: var(--gray-600);">
+                После буксировки судно окажется в порту "Нефтяной завод" с нулевым топливом. Вам нужно будет заправить судно нефтью для продолжения работы.
+            </div>
+        </div>
+        ${userCoins < estimatedCost ? `
+            <div style="background: var(--red-50); border: 1px solid var(--red-200); border-radius: var(--radius-lg); padding: 0.75rem;">
+                <p style="font-size: 0.875rem; color: var(--red-600);">
+                    ⚠️ Недостаточно средств на балансе
+                </p>
+            </div>
+        ` : ''}
     `;
     
-    modal.style.display = 'block';
+    modal.classList.add('active');
+    modal.style.display = 'flex';
     
     // Обработчики событий
     const handleConfirm = async () => {
+        modal.classList.remove('active');
         modal.style.display = 'none';
         cancelBtn.removeEventListener('click', handleCancel);
         okBtn.removeEventListener('click', handleConfirm);
@@ -1033,6 +1664,7 @@ async function confirmTowShip(shipId, currentPortName, estimatedCost) {
     };
     
     const handleCancel = () => {
+        modal.classList.remove('active');
         modal.style.display = 'none';
         cancelBtn.removeEventListener('click', handleCancel);
         okBtn.removeEventListener('click', handleConfirm);
@@ -1083,18 +1715,21 @@ async function towShip(shipId) {
 
 async function showBuyShipModal() {
     const shipTypes = [
-        { type: 'tanker', name: 'Танкер', description: 'Перевозит нефть' },
-        { type: 'cargo', name: 'Грузовое судно', description: 'Перевозит материалы' },
-        { type: 'supply', name: 'Снабженец', description: 'Перевозит провизию' }
+        { type: 'tanker', name: 'Танкер', description: 'Специализированное судно для перевозки нефти и нефтепродуктов', specs: { fuel: 100, capacity: 70 } },
+        { type: 'cargo', name: 'Грузовое', description: 'Универсальное грузовое судно для перевозки различных товаров', specs: { fuel: 100, capacity: 50 } },
+        { type: 'supply', name: 'Снабженец', description: 'Судно снабжения для доставки провизии и материалов', specs: { fuel: 80, capacity: 40 } }
     ];
     
     const modal = document.getElementById('ship-modal');
     const title = document.getElementById('modal-title');
     const body = document.getElementById('modal-body');
     
+    if (!modal || !title || !body) return;
+    
     title.textContent = 'Купить судно';
     body.innerHTML = '<div class="loading">Загрузка цен...</div>';
-    modal.style.display = 'block';
+    modal.classList.add('active');
+    modal.style.display = 'flex';
     
     try {
         const userId = currentUser.userId || currentUser.id;
@@ -1108,32 +1743,76 @@ async function showBuyShipModal() {
         
         const shipsWithPrices = await Promise.all(pricePromises);
         
+        // Функция для получения иконки судна
+        const getShipIcon = (type) => {
+            if (type === 'tanker' && window.ShipIcons) {
+                return window.ShipIcons.getTankerIcon(64);
+            } else if (type === 'cargo' && window.ShipIcons) {
+                return window.ShipIcons.getCargoShipIcon(64);
+            } else if (type === 'supply' && window.ShipIcons) {
+                return window.ShipIcons.getSupplyShipIcon(64);
+            }
+            return '';
+        };
+        
         body.innerHTML = `
-            <div class="cargo-selector">
+            <p style="font-size: 0.875rem; color: var(--gray-600); margin-bottom: 1rem;">
+                Выберите тип судна для покупки:
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                 ${shipsWithPrices.map(st => `
-                    <div class="cargo-option" onclick="purchaseShip('${st.type}')">
-                        <h4>${st.typeName || st.name}</h4>
-                        <p>${st.description}</p>
-                        ${st.error ? `
-                            <p style="color: red;">Ошибка: ${st.error}</p>
-                        ` : `
-                            <p>💰 ${st.currentPrice || 'N/A'}</p>
-                            ${st.existingShipsCount > 0 ? `
-                                <p style="font-size: 0.9em; color: #666;">
-                                    У вас уже ${st.existingShipsCount} ${st.existingShipsCount === 1 ? 'судно' : st.existingShipsCount < 5 ? 'судна' : 'судов'} этого типа
-                                </p>
-                                <p style="font-size: 0.85em; color: #999;">
-                                    Базовая цена: ${st.basePrice} (это ${st.nextShipNumber}-е судно)
-                                </p>
-                            ` : ''}
-                        `}
+                    <div class="ship-card" onclick="purchaseShip('${st.type}')" style="cursor: pointer;">
+                        <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                            <div style="width: 4rem; height: 4rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                ${getShipIcon(st.type)}
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem;">
+                                    <h3 style="font-size: 1rem; font-weight: 600; color: var(--gray-900); margin: 0;">${st.typeName || st.name}</h3>
+                                    ${!st.error ? `
+                                        <div style="display: flex; align-items: center; gap: 0.25rem; background: var(--primary-blue); color: white; padding: 0.25rem 0.75rem; border-radius: 9999px;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
+                                                <circle cx="12" cy="12" r="10"/>
+                                                <path d="M12 6v12M15 9a3 3 0 1 0-6 0"/>
+                                            </svg>
+                                            <span style="font-weight: 600;">${(st.currentPrice || 0).toLocaleString()}</span>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                                <p style="font-size: 0.75rem; color: var(--gray-600); margin-bottom: 0.75rem;">${st.description}</p>
+                                <div style="display: flex; gap: 0.75rem; font-size: 0.75rem;">
+                                    <div style="display: flex; align-items: center; gap: 0.25rem; color: var(--gray-600);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 0.875rem; height: 0.875rem;">
+                                            <path d="M3 3h18v18H3zM12 8v8m-4-4h8"/>
+                                        </svg>
+                                        <span>Топливо: ${st.specs.fuel}</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 0.25rem; color: var(--gray-600);">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 0.875rem; height: 0.875rem;">
+                                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                                        </svg>
+                                        <span>Вместимость: ${st.specs.capacity}</span>
+                                    </div>
+                                </div>
+                                ${st.error ? `
+                                    <p style="color: var(--red-600); font-size: 0.875rem; margin-top: 0.5rem;">Ошибка: ${st.error}</p>
+                                ` : st.existingShipsCount > 0 ? `
+                                    <p style="font-size: 0.75em; color: var(--gray-500); margin-top: 0.5rem;">
+                                        У вас уже ${st.existingShipsCount} ${st.existingShipsCount === 1 ? 'судно' : st.existingShipsCount < 5 ? 'судна' : 'судов'} этого типа
+                                    </p>
+                                    <p style="font-size: 0.7em; color: var(--gray-400);">
+                                        Базовая цена: ${st.basePrice} (это ${st.nextShipNumber}-е судно)
+                                    </p>
+                                ` : ''}
+                            </div>
+                        </div>
                     </div>
                 `).join('')}
             </div>
         `;
     } catch (error) {
         body.innerHTML = `
-            <div class="loading" style="color: red;">
+            <div class="loading" style="color: var(--red-600);">
                 Ошибка загрузки цен: ${error.message}
             </div>
         `;
@@ -1154,7 +1833,11 @@ async function purchaseShip(shipType) {
             showSuccess('Судно куплено!');
             await loadUserData();
             updateUI();
-            document.getElementById('ship-modal').style.display = 'none';
+            const shipModal = document.getElementById('ship-modal');
+            if (shipModal) {
+                shipModal.classList.remove('active');
+                shipModal.style.display = 'none';
+            }
         }
     } catch (error) {
         // Ошибка уже обработана в apiRequest
@@ -1201,6 +1884,82 @@ function calculateTravelCost(ship, port) {
     return '?';
 }
 
+// Функция для выбора груза для загрузки (показывает детали с слайдером)
+function selectCargoForLoading(shipId, cargoType, maxAvailable, pricePerUnit, maxAmount) {
+    const ship = ships.find(s => s.id === shipId);
+    if (!ship) return;
+    
+    const modalBody = document.getElementById('modal-body');
+    if (!modalBody) return;
+    
+    // Находим секцию загрузки груза и заменяем её на детали
+    const cargoSection = modalBody.querySelector('.cargo-selection-list')?.closest('.modal-section');
+    if (!cargoSection) return;
+    
+    const cargoIcon = cargoType === 'oil' ? (window.CargoIcons ? window.CargoIcons.getOilIcon(24) : '') :
+                     cargoType === 'materials' ? (window.CargoIcons ? window.CargoIcons.getMaterialsIcon(24) : '') :
+                     cargoType === 'provisions' ? (window.CargoIcons ? window.CargoIcons.getProvisionIcon(24) : '') : '';
+    
+    const initialAmount = Math.min(10, maxAmount);
+    const totalCost = initialAmount * pricePerUnit;
+    
+    cargoSection.innerHTML = `
+        <div class="modal-section-title">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1rem; height: 1rem;">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            </svg>
+            <span>Загрузить груз</span>
+        </div>
+        <div class="cargo-selection-details">
+            <div class="cargo-selection-header">
+                <div class="cargo-selection-info">
+                    <div class="cargo-selection-icon">
+                        ${cargoIcon}
+                    </div>
+                    <span class="cargo-selection-name">${getCargoName(cargoType)}</span>
+                </div>
+                <span class="cargo-selection-max">Макс: ${maxAmount} ед.</span>
+            </div>
+            <div class="cargo-amount-control">
+                <div class="cargo-amount-display">
+                    <span>Количество:</span>
+                    <span class="cargo-amount-value" id="cargo-amount-display-${shipId}-${cargoType}">${initialAmount} ед.</span>
+                </div>
+                <input type="range" 
+                       class="cargo-slider" 
+                       id="cargo-slider-${shipId}-${cargoType}"
+                       min="1" 
+                       max="${maxAmount}" 
+                       value="${initialAmount}"
+                       oninput="updateCargoAmount('${shipId}', '${cargoType}', ${pricePerUnit}, ${maxAmount})">
+                <div class="cargo-slider-labels">
+                    <span>1</span>
+                    <span>${maxAmount}</span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                <button class="btn-secondary" onclick="cancelCargoSelection('${shipId}')" style="flex: 1;">Отмена</button>
+                <button class="btn-primary btn-green" onclick="confirmLoadCargo('${shipId}', '${cargoType}', ${maxAvailable}, ${pricePerUnit})" style="flex: 1;">Загрузить</button>
+            </div>
+        </div>
+    `;
+}
+
+// Обновление количества груза при изменении слайдера
+function updateCargoAmount(shipId, cargoType, pricePerUnit, maxAmount) {
+    const slider = document.getElementById(`cargo-slider-${shipId}-${cargoType}`);
+    const display = document.getElementById(`cargo-amount-display-${shipId}-${cargoType}`);
+    if (slider && display) {
+        const amount = parseInt(slider.value);
+        display.textContent = `${amount} ед.`;
+    }
+}
+
+// Отмена выбора груза
+function cancelCargoSelection(shipId) {
+    openShipModal(shipId);
+}
+
 // Экспорт функций для использования в HTML
 window.openShipModal = openShipModal;
 window.openPortModal = openPortModal;
@@ -1217,3 +1976,9 @@ window.purchaseShip = purchaseShip;
 window.showBuyShipModal = showBuyShipModal;
 window.confirmTowShip = confirmTowShip;
 window.towShip = towShip;
+window.selectCargoForLoading = selectCargoForLoading;
+window.updateCargoAmount = updateCargoAmount;
+window.cancelCargoSelection = cancelCargoSelection;
+window.openRefuelModal = openRefuelModal;
+window.updateRefuelAmount = updateRefuelAmount;
+window.closeRefuelModal = closeRefuelModal;

@@ -11,35 +11,90 @@
     <div id="app">
         <!-- Заголовок -->
         <header class="header">
-            <h1>⚓ Морское Судоходство</h1>
-            <div class="user-info">
-                <span id="coins">💰 0</span>
-                <div class="user-profile">
-                    <img id="user-photo" src="" alt="Фото профиля" class="user-avatar" style="display: none;">
-                    <span id="username"></span>
+            <div class="header-content">
+                <div class="header-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="5" r="3"/>
+                        <line x1="12" y1="8" x2="12" y2="16"/>
+                        <path d="M5 12h14"/>
+                        <path d="M8 12l-2 2 2 2"/>
+                        <path d="M16 12l2 2-2 2"/>
+                    </svg>
+                    <h1>Морское Судоходство</h1>
+                </div>
+                <div class="user-info">
+                    <div class="balance-badge" id="coins-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v12M15 9a3 3 0 1 0-6 0"/>
+                        </svg>
+                        <span id="coins">0</span>
+                    </div>
+                    <div class="user-profile">
+                        <div class="user-avatar">
+                            <img id="user-photo" src="" alt="Фото профиля" style="display: none;">
+                        </div>
+                        <span id="username"></span>
+                    </div>
                 </div>
             </div>
         </header>
 
         <!-- Навигация -->
         <nav class="tabs">
-            <button class="tab-btn active" data-tab="ships">🚢 Судна</button>
-            <button class="tab-btn" data-tab="ports">🏭 Порты</button>
-            <button class="tab-btn" data-tab="fleet">⚓ Флот</button>
+            <div class="tabs-content">
+                <button class="tab-btn active" data-tab="ships">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 21h18"/>
+                        <path d="M5 21V7l8-4v18"/>
+                        <path d="M19 21V11l-6-4"/>
+                    </svg>
+                    <span>Судна</span>
+                </button>
+                <button class="tab-btn" data-tab="ports">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="7" width="20" height="15" rx="2" ry="2"/>
+                        <path d="M17 2v5M7 2v5M2 12h20"/>
+                    </svg>
+                    <span>Порты</span>
+                </button>
+                <button class="tab-btn" data-tab="fleet">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="5" r="3"/>
+                        <line x1="12" y1="8" x2="12" y2="16"/>
+                        <path d="M5 12h14"/>
+                        <path d="M8 12l-2 2 2 2"/>
+                        <path d="M16 12l2 2-2 2"/>
+                    </svg>
+                    <span>Флот</span>
+                </button>
+            </div>
         </nav>
 
         <!-- Вкладка: Мои судна -->
         <div id="ships-tab" class="tab-content active">
-            <h2>Мои судна</h2>
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 21h18"/>
+                    <path d="M5 21V7l8-4v18"/>
+                    <path d="M19 21V11l-6-4"/>
+                </svg>
+                Ваши суда
+            </h2>
             <div id="ships-list" class="ships-list">
                 <!-- Судна будут загружены динамически -->
             </div>
-            <button id="buy-ship-btn" class="btn-primary">Купить судно</button>
         </div>
 
         <!-- Вкладка: Порты -->
         <div id="ports-tab" class="tab-content">
-            <h2>Порты</h2>
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="7" width="20" height="15" rx="2" ry="2"/>
+                    <path d="M17 2v5M7 2v5M2 12h20"/>
+                </svg>
+                Порты
+            </h2>
             <div id="ports-list" class="ports-list">
                 <!-- Порты будут загружены динамически -->
             </div>
@@ -47,7 +102,16 @@
 
         <!-- Вкладка: Флот -->
         <div id="fleet-tab" class="tab-content">
-            <h2>Мой флот</h2>
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="5" r="3"/>
+                    <line x1="12" y1="8" x2="12" y2="16"/>
+                    <path d="M5 12h14"/>
+                    <path d="M8 12l-2 2 2 2"/>
+                    <path d="M16 12l2 2-2 2"/>
+                </svg>
+                Статистика флота
+            </h2>
             <div id="fleet-stats" class="fleet-stats">
                 <!-- Статистика флота -->
             </div>
@@ -56,18 +120,35 @@
         <!-- Модальное окно для судна -->
         <div id="ship-modal" class="modal">
             <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2 id="modal-title">Управление судном</h2>
-                <div id="modal-body"></div>
+                <div class="modal-header">
+                    <div class="modal-header-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 21h18"/>
+                            <path d="M5 21V7l8-4v18"/>
+                            <path d="M19 21V11l-6-4"/>
+                        </svg>
+                        <span id="modal-title">Управление судном</span>
+                    </div>
+                    <span class="modal-close">&times;</span>
+                </div>
+                <div class="modal-body" id="modal-body"></div>
             </div>
         </div>
 
         <!-- Модальное окно для порта -->
         <div id="port-modal" class="modal">
             <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2 id="port-modal-title">Порт</h2>
-                <div id="port-modal-body"></div>
+                <div class="modal-header">
+                    <div class="modal-header-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="7" width="20" height="15" rx="2" ry="2"/>
+                            <path d="M17 2v5M7 2v5M2 12h20"/>
+                        </svg>
+                        <span id="port-modal-title">Порт</span>
+                    </div>
+                    <span class="modal-close">&times;</span>
+                </div>
+                <div class="modal-body" id="port-modal-body"></div>
             </div>
         </div>
 
@@ -79,18 +160,44 @@
 
         <!-- Модальное окно подтверждения буксировки -->
         <div id="confirm-tow-modal" class="modal" style="display: none;">
-            <div class="modal-content" style="max-width: 400px;">
-                <h2>🚢 Буксировка судна</h2>
-                <div id="confirm-tow-body" style="margin: 20px 0;"></div>
-                <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                    <button id="confirm-tow-cancel" class="btn-secondary" style="padding: 10px 20px;">Отмена</button>
-                    <button id="confirm-tow-ok" class="btn-primary" style="padding: 10px 20px;">Подтвердить</button>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-header-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.5rem; height: 1.5rem;">
+                            <path d="M3 21h18"/>
+                            <path d="M5 21V7l8-4v18"/>
+                            <path d="M19 21V11l-6-4"/>
+                        </svg>
+                        <span>Буксировка судна</span>
+                    </div>
+                    <span class="modal-close" onclick="document.getElementById('confirm-tow-modal').classList.remove('active'); document.getElementById('confirm-tow-modal').style.display = 'none';">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="confirm-tow-body"></div>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <button id="confirm-tow-cancel" class="btn-secondary" style="flex: 1;">Отмена</button>
+                        <button id="confirm-tow-ok" class="btn-primary" style="flex: 1;">Подтвердить</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Fixed Buy Ship Button -->
+    <div id="buy-ship-fixed" class="buy-ship-fixed" style="display: none;">
+        <div class="buy-ship-fixed-content">
+            <button id="buy-ship-btn" class="btn-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 1.25rem; height: 1.25rem;">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Купить судно
+            </button>
+        </div>
+    </div>
+
     <script src="telegram-web-app.js"></script>
+    <script src="icons.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
